@@ -6,7 +6,9 @@ A Home Assistant conversation integration with a sidebar chat interface and rule
 
 This is an early prototype. Some features require existing helper entities and scripts. The voice and sidebar interface must be verified on your own Home Assistant installation.
 
-Optional household integrations are configured in `/config/jarvis_local_settings.json`, which is outside this repository and preserved across HACS updates. The JSON object may contain `thermostat`, `car_cable_sensor`, `car_battery_sensor`, `guest_mode`, `guest_names`, `music_script`, `personality_script`, `phonetic_script`, and a `switch_lights` object mapping spoken names to switch entity IDs. Values are entity IDs. Missing entries disable their corresponding features; lights and areas are discovered independently. Scripts and helpers are not created or replaced by this integration. Restart Home Assistant after changing the file. Keep backups and never commit the file to GitHub.
+Open **Jarvis settings** in the sidebar to select optional household entities. Settings are stored by Home Assistant and kept across HACS updates. Lights and areas are discovered automatically. A single thermostat can be discovered automatically; select one if there are several. Car sensors and custom scripts must be chosen because their roles cannot be inferred reliably from entity names alone. Switches used as lights require an explicit spoken name and must be exposed to Assist. Existing scripts, helpers and automations are not created or replaced by this integration.
+
+If `/config/jarvis_local_settings.json` exists from version 0.9.2, its values are loaded until settings are saved in the interface. You can remove the old file after confirming your selections have been saved and survive a restart. Do not put household settings in the repository.
 
 ## Installation with HACS
 
