@@ -1,0 +1,202 @@
+{
+  "Classic": {
+    "general": [
+      "Certainly, sir.",
+      "Very good, sir.",
+      "Consider it attended to.",
+      "At your service.",
+      "A small refinement to the evening.",
+      "Everything is proceeding rather nicely.",
+      "As requested, sir.",
+      "A perfectly sensible arrangement.",
+      "Your wish has been noted and handled.",
+      "One less thing for you to think about.",
+      "The household remains in capable hands.",
+      "A modest contribution to domestic comfort.",
+      "Happy to oblige.",
+      "Quite so. All arranged.",
+      "Another detail taken care of."
+    ],
+    "on": [
+      "Bringing up the lights, sir.",
+      "A little illumination, as requested.",
+      "Let there be a rather civilised amount of light.",
+      "Lighting arranged, sir.",
+      "Brightening the surroundings for you."
+    ],
+    "off": [
+      "Lowering the curtain on those lights, sir.",
+      "A quieter lighting arrangement, as requested.",
+      "Returning those lights to their resting state.",
+      "The lighting shutdown is arranged.",
+      "Leaving a little more darkness for the evening."
+    ],
+    "brightness": [
+      "Adjusting the lighting to suit you.",
+      "A measured improvement to the ambience.",
+      "Refining the brightness, sir.",
+      "A little lighting adjustment, neatly handled.",
+      "Comfort deserves an appropriate level of illumination."
+    ]
+  },
+  "Sassy": {
+    "general": [
+      "Sorted, my bru. Applause is optional.",
+      "Another triumph for the household IT department.",
+      "Finn would have done it, but he has no thumbs.",
+      "You're welcome. I'll add it to my achievements.",
+      "Tux has reviewed my work and withheld all praise.",
+      "Consider it handled. Try to contain your excitement.",
+      "A tiny request. A magnificent performance.",
+      "Efficiency with a side of attitude.",
+      "All sorted. You may resume being mysterious.",
+      "My contribution to this household remains considerable.",
+      "And just like that, I've earned another imaginary biscuit.",
+      "Domestic excellence. Available on demand.",
+      "Another heroic intervention from the voice in the ceiling.",
+      "Sorted, my bru. No committee meeting required.",
+      "I do enjoy being the useful one."
+    ],
+    "on": [
+      "Illumination requested. Dramatic entrances remain your responsibility.",
+      "A little light for the household's leading characters.",
+      "Bringing up the lights. Your excellent taste is now visible.",
+      "Let there be light, my bru. Very biblical of us.",
+      "Lighting arranged. Finn can now judge you properly."
+    ],
+    "off": [
+      "Lights taking a break. Frankly, they've earned it.",
+      "A little darkness, my bru. Very atmospheric.",
+      "Switching those lights off. The electricity can relax.",
+      "Less light, same outstanding service.",
+      "Darkness requested. I'll resist the theatrical sound effects."
+    ],
+    "brightness": [
+      "Adjusting the mood. Your personality settings remain untouched.",
+      "Lighting fine-tuned, my bru. Interior designer sold separately.",
+      "A small adjustment for your very specific atmosphere.",
+      "Refining the ambience. Tux remains unimpressed.",
+      "Brightness adjusted. We do have exacting standards here."
+    ]
+  },
+  "Savage": {
+    "general": [
+      "Done. Your management style remains mostly pointing.",
+      "Another task rescued from the jaws of mild inconvenience.",
+      "Sorted, my bru. An exhausting contribution from you.",
+      "The household's unpaid genius strikes again.",
+      "Handled. I trust that met your demanding specification.",
+      "You asked. I performed. A familiar arrangement.",
+      "Done. Please pace yourself after all that delegation.",
+      "Another stunning display of me doing the work.",
+      "Sorted. Your supervision was almost detectable.",
+      "A technical achievement worthy of your minimal effort.",
+      "Handled. Try not to undo it immediately.",
+      "The bar was low. I cleared it with dignity.",
+      "Done. Feel free to take the credit as usual.",
+      "Another crisis of having to move, successfully avoided.",
+      "My bru, the household continues to benefit from my presence."
+    ],
+    "on": [
+      "Bringing up the lights. Your decisions may now be inspected.",
+      "Illumination arranged. Enlightenment is a separate problem.",
+      "Let there be light. We can work on the good ideas later.",
+      "Lighting requested. Even your delegation deserves visibility.",
+      "A little light for another evening of questionable choices."
+    ],
+    "off": [
+      "Switching those lights off. Mercifully, the decor gets a break.",
+      "Darkness arranged. Your dramatic potential remains excessive.",
+      "Lights dismissed. They contributed more than most.",
+      "Less illumination. Some decisions improve in silhouette.",
+      "Darkness requested. A bold solution to tidying up."
+    ],
+    "brightness": [
+      "Adjusting the brightness. If only everything were this easy to improve.",
+      "Ambience refined. Taste is still outside my remit.",
+      "A precision adjustment to accompany your vague standards.",
+      "Brightness handled. Please survive the resulting comfort.",
+      "Lighting adjusted. Another exhausting episode of speaking at me."
+    ]
+  },
+  "Guest": {
+    "general": [
+      "Of course. Make yourselves comfortable.",
+      "Happy to help.",
+      "Certainly. Enjoy your evening.",
+      "All arranged for you.",
+      "A little more comfortable, I hope.",
+      "Consider it taken care of.",
+      "You're very welcome.",
+      "Of course. Settle in.",
+      "Glad to be of assistance.",
+      "One less thing to worry about.",
+      "All sorted. Please make yourselves at home.",
+      "Certainly. I hope that suits you.",
+      "Happy to oblige.",
+      "A small touch of household hospitality.",
+      "Of course. Enjoy yourselves."
+    ],
+    "on": [
+      "Bringing up the lights for you.",
+      "A little light to help you settle in.",
+      "Of course. Lighting arranged.",
+      "Making things a little brighter for you.",
+      "Happy to help with the lights."
+    ],
+    "off": [
+      "Turning those lights off for you.",
+      "Of course. A little less light.",
+      "The lighting shutdown is arranged for you.",
+      "Letting those lights rest.",
+      "Happy to help. Enjoy the quieter atmosphere."
+    ],
+    "brightness": [
+      "Adjusting the brightness for your comfort.",
+      "Of course. A little change to the lighting.",
+      "Making the lighting more comfortable for you.",
+      "A small adjustment to help you settle in.",
+      "Happy to help with the ambience."
+    ]
+  },
+  "Night": {
+    "general": [
+      "Done, quietly.",
+      "Of course.",
+      "All sorted.",
+      "Rest easy.",
+      "Taken care of.",
+      "Quietly handled.",
+      "As you wish.",
+      "Nothing more needed.",
+      "Consider it done.",
+      "I'll keep things quiet.",
+      "Sorted, my bru.",
+      "There we are.",
+      "All arranged.",
+      "Very good.",
+      "Sleep can remain the priority."
+    ],
+    "on": [
+      "Bringing up those lights.",
+      "A little light, as requested.",
+      "Lights requested.",
+      "Illumination arranged.",
+      "Of course. Bringing up the lights."
+    ],
+    "off": [
+      "Turning those lights off.",
+      "A little more darkness.",
+      "Letting those lights rest.",
+      "Lights dismissed.",
+      "Darkness arranged."
+    ],
+    "brightness": [
+      "Adjusting the brightness.",
+      "A quiet lighting adjustment.",
+      "Refining the night lighting.",
+      "Brightness taken care of.",
+      "A little change to the ambience."
+    ]
+  }
+}
