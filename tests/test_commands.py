@@ -18,6 +18,7 @@ sys.modules[exposed.__name__]=exposed
 from jarvis_test.discovery import lighting
 from jarvis_test.room_context import apply_room
 from jarvis_test.followup import followup
+from jarvis_test.clarification import request, resolve
 
 class State:
     def __init__(self, entity_id, name, state='on', modes=('brightness',)):
@@ -82,6 +83,26 @@ class Commands(unittest.TestCase):
         phrase=apply_room('set spotlights to 30%',self.hass.areas.entries['bedroom'],self.hass)
         step=lighting(self.hass,phrase)
         self.assertEqual(step['calls'][0]['data'],{'entity_id':['light.spotlight_1'],'brightness_pct':30})
+    def test_clarification_unique_room_answer_and_preview(self):
+        pending=request(self.hass,'preview turn the lamp on',None)
+        self.assertTrue(pending['preview'])
+        self.assertEqual(resolve(pending,'the bedroom one'),('resolved','light.bedroom'))
+        self.assertEqual(resolve(pending,'the kitchen one'),('resolved','light.kitchen'))
+        self.assertEqual(resolve(pending,'the lamp'),('unclear',None))
+        self.assertEqual(resolve(pending,'cancel'),('cancel',None))
+    def test_clarification_does_not_intercept_compound(self):
+        self.assertIsNone(request(self.hass,'turn lamp and office on',None))
+    def test_clarification_room_scope(self):
+        self.assertIsNone(request(self.hass,'lamp on',self.hass.areas.entries['bedroom']))
+    def test_revalidation_excluded_entity_is_not_selected(self):
+        pending=request(self.hass,'lamp on',None)
+        entity=resolve(pending,'bedroom')[1]
+        self.hass.hidden.add(entity)
+        self.assertIsNone(lighting(self.hass,'turn on '+entity))
+    def test_followup_prior_lights_revalidates_exposure(self):
+        self.hass.hidden.add('light.bedroom')
+        with self.assertRaisesRegex(ValueError,'no longer available'):
+            lighting(self.hass,'turn off __previous_lights__',['light.bedroom'])
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()

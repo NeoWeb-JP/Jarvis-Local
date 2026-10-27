@@ -1,10 +1,12 @@
 """Bounded local agent with preflight validation and previews."""
 import asyncio
 import logging
+import re
 from time import perf_counter, monotonic
 from uuid import uuid4
 from .settings import get
 from .followup import followup
+from .clarification import request as clarification_request, resolve as clarification_resolve
 from .personality import confirmation
 from .transcript import correct
 from .verify import verify
@@ -29,6 +31,7 @@ class JarvisAgent(conversation.ConversationEntity):
         self.hass = hass
         self._lock = asyncio.Lock()
         self._recent_lights = {}
+        self._pending_clarifications = {}
 
     @property
     def supported_languages(self):
@@ -50,6 +53,8 @@ class JarvisAgent(conversation.ConversationEntity):
         memory_key=(getattr(user_input.context,'user_id',None),conversation_id,getattr(user_input,'satellite_id',None) or getattr(user_input,'device_id',None),getattr(area_override,'id',None))
         now=monotonic()
         self._recent_lights={k:v for k,v in self._recent_lights.items() if now-v['at'] < 120}
+        self._pending_clarifications={k:v for k,v in self._pending_clarifications.items() if now-v['at'] < 120}
+        continue_conversation=False
         followup_used=False
         corrections=[]
         command_text=user_input.text
@@ -57,19 +62,45 @@ class JarvisAgent(conversation.ConversationEntity):
             area=area_override or source_area(self.hass,user_input)
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
                 command_text,corrections=correct(self.hass,user_input.text)
-            continuation=followup(command_text)
-            if continuation is not None:
-                previous=self._recent_lights.get(memory_key)
-                if previous is None:
-                    raise ValueError('Which lights do you mean? Please name the room or lights.')
-                resolved_text,preview=continuation
-                step=lighting(self.hass,resolved_text,previous['ids'])
-                if step is None:raise ValueError('Please name the lights again.')
+            pending=self._pending_clarifications.get(memory_key)
+            resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
+            if pending and resolution == 'cancel':
+                self._pending_clarifications.pop(memory_key,None)
+                steps=[{'kind':'text','response':'Cancelled. Nothing was run.','label':'cancel clarification'}]
+            elif pending and resolution == 'resolved':
+                self._pending_clarifications.pop(memory_key,None)
+                resolved_text='turn '+pending['action']+' '+entity_id
+                preview=pending['preview']
+                step=lighting(self.hass,resolved_text)
+                if step is None:raise ValueError('That light is no longer available. Nothing was run.')
                 steps=[step]
                 followup_used=True
+            elif pending and not re.search(r'\b(?:turn|switch|set|dim|brighten|play|preview|good|cancel)\b',command_text,re.I):
+                steps=[{'kind':'text','response':'I am still not sure which light you mean. '+pending['question'],'label':'clarify light'}]
+                continue_conversation=True
             else:
-                resolved_text=apply_room(command_text,area,self.hass)
-                steps, preview = plan(self.hass, resolved_text,area)
+                if pending:self._pending_clarifications.pop(memory_key,None)
+                ambiguous=clarification_request(self.hass,command_text,area)
+                if ambiguous:
+                    ambiguous['at']=now
+                    self._pending_clarifications[memory_key]=ambiguous
+                    while len(self._pending_clarifications)>64:del self._pending_clarifications[next(iter(self._pending_clarifications))]
+                    steps=[{'kind':'text','response':ambiguous['question'],'label':'clarify light'}]
+                    continue_conversation=True
+                else:
+                    continuation=followup(command_text)
+                    if continuation is not None:
+                        previous=self._recent_lights.get(memory_key)
+                        if previous is None:
+                            raise ValueError('Which lights do you mean? Please name the room or lights.')
+                        resolved_text,preview=continuation
+                        step=lighting(self.hass,resolved_text,previous['ids'])
+                        if step is None:raise ValueError('Please name the lights again.')
+                        steps=[step]
+                        followup_used=True
+                    else:
+                        resolved_text=apply_room(command_text,area,self.hass)
+                        steps, preview = plan(self.hass, resolved_text,area)
         except ValueError as err:
             recovered = recover_off(self.hass, user_input.text) if getattr(user_input, 'device_id', None) else None
             if recovered is not None:
@@ -187,4 +218,4 @@ class JarvisAgent(conversation.ConversationEntity):
         del history[:-20]
         result.async_set_speech(speech)
         _LOGGER.info('Jarvis local processing: %.0f ms', (perf_counter()-start)*1000)
-        return conversation.ConversationResult(response=result, conversation_id=conversation_id)
+        return conversation.ConversationResult(response=result, conversation_id=conversation_id, continue_conversation=continue_conversation)

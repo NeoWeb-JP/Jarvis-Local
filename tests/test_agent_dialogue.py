@@ -1,0 +1,59 @@
+"""Dialogue integration tests with mocked Home Assistant services."""
+import sys,types,unittest
+import test_commands as fixtures
+conv=types.ModuleType('homeassistant.components.conversation')
+class ConversationEntity:pass
+class Result:
+    def __init__(self,response,conversation_id,continue_conversation=False):self.response=response;self.conversation_id=conversation_id;self.continue_conversation=continue_conversation
+conv.ConversationEntity=ConversationEntity
+conv.ConversationEntityFeature=types.SimpleNamespace(CONTROL=1)
+conv.ConversationResult=Result
+sys.modules[conv.__name__]=conv
+intent=types.ModuleType('homeassistant.helpers.intent')
+class Response:
+    def __init__(self,language):self.speech=''
+    def async_set_speech(self,speech):self.speech=speech
+intent.IntentResponse=Response;sys.modules[intent.__name__]=intent
+exceptions=types.ModuleType('homeassistant.exceptions');exceptions.HomeAssistantError=type('HomeAssistantError',(Exception,),{});sys.modules[exceptions.__name__]=exceptions
+storage=types.ModuleType('homeassistant.helpers.storage');storage.Store=object;sys.modules[storage.__name__]=storage
+from jarvis_test import agent as module
+async def verify(*args):return []
+async def confirmation(hass,context,fallback,action='general'):return fallback
+module.verify=verify;module.confirmation=confirmation
+class Services:
+    def __init__(self):self.calls=[]
+    async def async_call(self,*args,**kwargs):self.calls.append((args,kwargs));return {}
+class UserInput:
+    def __init__(self,text,cid='one',device=None):self.text=text;self.conversation_id=cid;self.context=types.SimpleNamespace(user_id='user');self.device_id=device;self.satellite_id=None;self.language='en'
+class Dialogue(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.hass=fixtures.Hass();self.hass.data={};self.hass.services=Services();self.agent=module.JarvisAgent(self.hass)
+    async def test_clarification_then_action_and_followup(self):
+        first=await self.agent.async_handle(UserInput('lamp on'))
+        self.assertTrue(first.continue_conversation);self.assertEqual(self.hass.services.calls,[])
+        reply=await self.agent.async_handle(UserInput('the bedroom one'))
+        self.assertFalse(reply.continue_conversation);self.assertEqual(self.hass.services.calls[0][0][2]['entity_id'],['light.bedroom'])
+        await self.agent.async_handle(UserInput('turn it off'))
+        self.assertEqual(self.hass.services.calls[1][0][1],'turn_off')
+    async def test_other_conversation_cannot_answer(self):
+        await self.agent.async_handle(UserInput('lamp on'))
+        await self.agent.async_handle(UserInput('bedroom','other'))
+        self.assertEqual(self.hass.services.calls,[])
+    async def test_preview_and_cancel_do_not_execute(self):
+        result=await self.agent.async_handle(UserInput('preview lamp on'))
+        self.assertTrue(result.continue_conversation)
+        reply=await self.agent.async_handle(UserInput('bedroom'))
+        self.assertIn('Preview only',reply.response.speech);self.assertEqual(self.hass.services.calls,[])
+        await self.agent.async_handle(UserInput('lamp on'))
+        reply=await self.agent.async_handle(UserInput('cancel'))
+        self.assertIn('Cancelled',reply.response.speech);self.assertEqual(self.hass.services.calls,[])
+    async def test_expired_and_removed_entities_do_not_execute(self):
+        await self.agent.async_handle(UserInput('lamp on'))
+        for v in self.agent._pending_clarifications.values():v['at']-=121
+        await self.agent.async_handle(UserInput('bedroom'))
+        self.assertEqual(self.hass.services.calls,[])
+        await self.agent.async_handle(UserInput('lamp on'))
+        self.hass.hidden.add('light.bedroom')
+        await self.agent.async_handle(UserInput('bedroom'))
+        self.assertEqual(self.hass.services.calls,[])
+if __name__=='__main__':unittest.main()
