@@ -151,7 +151,10 @@ class JarvisAgent(conversation.ConversationEntity):
                                 'script', step['name'], step['data'], blocking=True,
                                 return_response=True, context=user_input.context)
                             if (reply or {}).get('response'):
-                                replies.append(reply['response'])
+                                routine_reply=reply['response']
+                                if step['name']=='jarvis_local_good_morning' and isinstance(routine_reply,str) and len(routine_reply.split())<9:
+                                    routine_reply=await confirmation(self.hass,user_input.context,routine_reply,action='morning')
+                                replies.append(routine_reply)
                     except (HomeAssistantError, ValueError) as err:
                         outcome='failed'
                         failure=str(err)

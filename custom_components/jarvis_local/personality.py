@@ -11,7 +11,7 @@ CATALOG=None
 
 def choose(hass,mode,action,catalog):
     pools=catalog[mode]
-    pool=list(dict.fromkeys(pools['general']+pools.get(action,[])))
+    pool=list(dict.fromkeys(pools.get(action,[]) or pools['general']))
     history=hass.data.setdefault('jarvis_local',{}).setdefault('reply_history',{}).setdefault(mode,deque(maxlen=8))
     available=[line for line in pool if line not in history] or pool
     line=random.choice(available)
