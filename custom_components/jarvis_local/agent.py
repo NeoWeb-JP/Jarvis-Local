@@ -171,6 +171,10 @@ class JarvisAgent(conversation.ConversationEntity):
                                     await self.hass.services.async_call('input_boolean','turn_off',{'entity_id':get(self.hass, 'guest_mode')},blocking=True,context=user_input.context)
                                     replies.append('Guest Mode is off and the names are cleared.')
                                 continue
+                            if step['kind'] == 'media_control':
+                                await self.hass.services.async_call('media_player',step['name'],step['data'],blocking=True,context=user_input.context)
+                                replies.append('Request sent to '+step['target_label']+'.')
+                                continue
                             if step['kind'] == 'music':
                                 await self.hass.services.async_call('script',step['name'],step['data'],blocking=True,context=user_input.context)
                                 replies.append('I requested '+step['data']['music']+' in '+step['data']['location']+'.')

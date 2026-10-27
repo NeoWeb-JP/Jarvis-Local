@@ -47,6 +47,15 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         await self.agent.async_handle(UserInput('lamp on'))
         reply=await self.agent.async_handle(UserInput('cancel'))
         self.assertIn('Cancelled',reply.response.speech);self.assertEqual(self.hass.services.calls,[])
+    async def test_media_preview_and_execution(self):
+        player=fixtures.State('media_player.bedroom','Bedroom Speaker','playing')
+        player.attributes={'supported_features':15}
+        self.hass.states.values[player.entity_id]=player
+        self.hass.entities.entries[player.entity_id]=types.SimpleNamespace(area_id='bedroom',device_id=None,disabled_by=None,hidden_by=None,aliases=set())
+        preview=await self.agent.async_handle(UserInput('preview pause music in bedroom'))
+        self.assertIn('Preview only',preview.response.speech);self.assertEqual(self.hass.services.calls,[])
+        await self.agent.async_handle(UserInput('pause music in bedroom'))
+        self.assertEqual(self.hass.services.calls[0][0],('media_player','media_pause',{'entity_id':'media_player.bedroom'}))
     async def test_expired_and_removed_entities_do_not_execute(self):
         await self.agent.async_handle(UserInput('lamp on'))
         for v in self.agent._pending_clarifications.values():v['at']-=121

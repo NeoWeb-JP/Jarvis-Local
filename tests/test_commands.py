@@ -15,10 +15,14 @@ for name, attr in [('area_registry','areas'),('device_registry','devices'),('ent
 exposed=types.ModuleType('homeassistant.components.homeassistant.exposed_entities')
 exposed.async_should_expose=lambda hass, domain, entity: entity not in hass.hidden
 sys.modules[exposed.__name__]=exposed
+media=types.ModuleType('homeassistant.components.media_player')
+media.MediaPlayerEntityFeature=types.SimpleNamespace(PAUSE=1,PLAY=2,NEXT_TRACK=4,VOLUME_SET=8)
+sys.modules[media.__name__]=media
 from jarvis_test.discovery import lighting
 from jarvis_test.room_context import apply_room
 from jarvis_test.followup import followup
 from jarvis_test.clarification import request, resolve
+from jarvis_test.media import media_plan
 
 class State:
     def __init__(self, entity_id, name, state='on', modes=('brightness',)):
@@ -28,6 +32,7 @@ class Registry:
     def __init__(self, entries):self.entries=entries
     def async_get(self, key):return self.entries.get(key)
     def async_list_areas(self):return list(self.entries.values())
+    def async_get_area(self, key):return self.entries.get(key)
 class States:
     def __init__(self, states):self.values={x.entity_id:x for x in states}
     def get(self, key):return self.values.get(key)
@@ -103,6 +108,29 @@ class Commands(unittest.TestCase):
         self.hass.hidden.add('light.bedroom')
         with self.assertRaisesRegex(ValueError,'no longer available'):
             lighting(self.hass,'turn off __previous_lights__',['light.bedroom'])
+    def add_player(self, entity_id, name, area, features=15, state='playing'):
+        player=State(entity_id,name,state);player.attributes={'supported_features':features}
+        self.hass.states.values[entity_id]=player
+        self.hass.entities.entries[entity_id]=types.SimpleNamespace(area_id=area,device_id=None,disabled_by=None,hidden_by=None,aliases=set())
+    def test_media_controls_require_unique_player(self):
+        self.add_player('media_player.kitchen','Kitchen Speaker','kitchen')
+        self.add_player('media_player.bedroom','Bedroom Speaker','bedroom')
+        step=media_plan(self.hass,'pause music in kitchen')
+        self.assertEqual(step['data']['entity_id'],'media_player.kitchen')
+        with self.assertRaisesRegex(ValueError,'Which media player'):media_plan(self.hass,'pause music')
+        self.assertEqual(media_plan(self.hass,'next song',self.hass.areas.entries['bedroom'])['name'],'media_next_track')
+    def test_media_volume_validation_and_exposure(self):
+        self.add_player('media_player.kitchen','Kitchen Speaker','kitchen')
+        step=media_plan(self.hass,'set volume on kitchen to 30%')
+        self.assertEqual(step['data']['volume_level'],0.3)
+        with self.assertRaises(ValueError):media_plan(self.hass,'set volume on kitchen to 101%')
+        self.hass.hidden.add('media_player.kitchen')
+        with self.assertRaises(ValueError):media_plan(self.hass,'pause music in kitchen')
+    def test_media_does_not_control_unsupported_or_off(self):
+        self.add_player('media_player.kitchen','Kitchen Speaker','kitchen',features=2)
+        with self.assertRaisesRegex(ValueError,'does not report'):media_plan(self.hass,'pause music in kitchen')
+        self.hass.states.values['media_player.kitchen'].state='off'
+        with self.assertRaisesRegex(ValueError,'unavailable or off'):media_plan(self.hass,'resume music in kitchen')
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()

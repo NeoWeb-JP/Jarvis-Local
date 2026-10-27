@@ -31,7 +31,7 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
             sidebar_title="Jarvis Local", sidebar_icon="mdi:robot",
-            module_url="/jarvis_local/panel.js?v=0.13.0",
+            module_url="/jarvis_local/panel.js?v=0.14.0",
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
         await hass.config_entries.async_unload_platforms(entry, ["conversation"])
