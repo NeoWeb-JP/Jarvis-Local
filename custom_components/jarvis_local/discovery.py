@@ -59,6 +59,18 @@ def _lighting(hass, text, previous=None):
                 raise ValueError('Those lights are no longer available to Assist. Please name the lights again. Nothing was run.')
             return ids, ', '.join(display_name(hass.states.get(i)) for i in ids)
         target=norm(target)
+        room_match=re.fullmatch(r'__room_spotlights_(.+)__',target)
+        if room_match:
+            room=rooms.get(room_match[1])
+            if room is None:raise ValueError('That area is no longer available. Nothing was run.')
+            registry=er.async_get(hass)
+            ids=[]
+            for entity_id in room['lights']:
+                state=hass.states.get(entity_id);entry=registry.async_get(entity_id)
+                aliases=text_aliases(state.name) | text_aliases(entry.aliases if entry else None) | {norm(entity_id.replace('_',' '))}
+                if any(re.search(r'\bspotlights?\b',name) for name in aliases):ids.append(entity_id)
+            if not ids:raise ValueError('I could not find any exposed spotlights in '+room['name']+'. Nothing was run.')
+            return sorted(ids),room['name']+' spotlights'
         target=re.sub(r'^the ', '', target)
         target=re.sub(r'^lights? in (?:the )?', '', target)
         area_target=re.sub(r' lights?$', '', target)

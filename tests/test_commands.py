@@ -58,6 +58,30 @@ class Commands(unittest.TestCase):
         self.assertEqual(step['calls'][0]['data']['brightness_pct'],30)
     def test_followup_request(self):
         self.assertIsNotNone(followup('set them to 30 percent'))
+    def add_spotlight(self, entity_id, name, area):
+        self.hass.states.values[entity_id]=State(entity_id,name)
+        self.hass.entities.entries[entity_id]=types.SimpleNamespace(area_id=area,device_id=None,disabled_by=None,hidden_by=None,aliases=set())
+    def test_spotlights_apply_to_selected_area_only(self):
+        self.add_spotlight('light.bed_spotlight_1','Bed Spot Light 1','bedroom')
+        self.add_spotlight('light.bed_spotlight_2','Bed Spotlight 2','bedroom')
+        self.add_spotlight('light.kitchen_spotlight','Kitchen Spotlights','kitchen')
+        phrase=apply_room('preview Spotlights on',self.hass.areas.entries['bedroom'],self.hass)
+        self.assertTrue(phrase.startswith('preview '))
+        step=lighting(self.hass,phrase.removeprefix('preview '))
+        self.assertEqual(step['data']['entity_id'],['light.bed_spotlight_1','light.bed_spotlight_2'])
+    def test_spotlights_without_matches_do_not_control_other_lights(self):
+        with self.assertRaisesRegex(ValueError,'could not find'):
+            apply_room('spotlights on',self.hass.areas.entries['bedroom'],self.hass)
+    def test_singular_multiple_spotlights_is_ambiguous(self):
+        self.add_spotlight('light.spotlight_1','Spotlight 1','bedroom')
+        self.add_spotlight('light.spotlight_2','Spotlight 2','bedroom')
+        with self.assertRaisesRegex(ValueError,'Which spotlight'):
+            apply_room('spotlight on',self.hass.areas.entries['bedroom'],self.hass)
+    def test_spotlight_brightness_is_area_scoped(self):
+        self.add_spotlight('light.spotlight_1','Spot Light 1','bedroom')
+        phrase=apply_room('set spotlights to 30%',self.hass.areas.entries['bedroom'],self.hass)
+        step=lighting(self.hass,phrase)
+        self.assertEqual(step['calls'][0]['data'],{'entity_id':['light.spotlight_1'],'brightness_pct':30})
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()

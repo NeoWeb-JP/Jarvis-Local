@@ -27,6 +27,22 @@ def short_room_target(hass, area, clause):
     if match is None:return clause
     target=norm(match[2])
     rooms,_=inventory(hass)
+    if target in {'spotlight', 'spotlights'}:
+        candidates=[]
+        registry=er.async_get(hass)
+        for entity_id in rooms.get(area.id, {}).get('lights', []):
+            state=hass.states.get(entity_id)
+            entry=registry.async_get(entity_id)
+            names=[display_name(state), entity_id.replace('_', ' ')]
+            if entry and isinstance(entry.aliases, (list, tuple, set, frozenset)):
+                names.extend(x for x in entry.aliases if isinstance(x, str))
+            if any(re.search(r'\bspotlights?\b', norm(name)) for name in names):
+                candidates.append(entity_id)
+        if not candidates:
+            raise ValueError('I could not find any exposed spotlights in '+area.name+'. Nothing was run.')
+        if target == 'spotlight' and len(candidates)>1:
+            raise ValueError('Which spotlight in '+area.name+'? Please use its full name, or say spotlights for all of them. Nothing was run.')
+        return match[1]+'__room_spotlights_'+area.id+'__'+match[3]
     # Bedroom is a source-relative shorthand only if no literal Bedroom area exists.
     if target in {'bedroom light','bedroom lights'} and norm(area.name).endswith('bedroom'):
         if not any(norm(r['name'])=='bedroom' for r in rooms.values()):
