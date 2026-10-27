@@ -5,6 +5,7 @@ import re
 from time import perf_counter, monotonic
 from uuid import uuid4
 from .settings import get
+from .timers import parse as parse_timer
 from .followup import followup
 from .clarification import request as clarification_request, resolve as clarification_resolve
 from .personality import confirmation
@@ -62,9 +63,13 @@ class JarvisAgent(conversation.ConversationEntity):
             area=area_override or source_area(self.hass,user_input)
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
                 command_text,corrections=correct(self.hass,user_input.text)
+            timer_request=parse_timer(command_text)
             pending=self._pending_clarifications.get(memory_key)
             resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
-            if pending and resolution == 'cancel':
+            if timer_request is not None:
+                self._pending_clarifications.pop(memory_key,None)
+                steps=[{'kind':'timer','data':timer_request,'label':'handle timer'}]
+            elif pending and resolution == 'cancel':
                 self._pending_clarifications.pop(memory_key,None)
                 steps=[{'kind':'text','response':'Cancelled. Nothing was run.','label':'cancel clarification'}]
             elif pending and resolution == 'resolved':
@@ -122,6 +127,9 @@ class JarvisAgent(conversation.ConversationEntity):
                 async with self._lock:
                     try:
                         for step in steps:
+                            if step['kind'] == 'timer':
+                                replies.append(await self.hass.data['jarvis_local']['timers'].handle(getattr(user_input,'satellite_id',None),step['data']))
+                                continue
                             if step['kind'] == 'text':
                                 replies.append(step['response'])
                                 continue

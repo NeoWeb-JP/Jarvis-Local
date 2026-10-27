@@ -16,6 +16,9 @@ async def async_setup_entry(hass, entry):
     data = hass.data.setdefault(DOMAIN, {})
     from .settings import load
     data["settings"] = await load(hass)
+    from .timers import Timers
+    data["timers"] = Timers(hass)
+    await data["timers"].start()
     if not data.get('ws_registered'):
         from .websocket import register
         register(hass)
@@ -31,15 +34,17 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
             sidebar_title="Jarvis Local", sidebar_icon="mdi:robot",
-            module_url="/jarvis_local/panel.js?v=0.14.0",
+            module_url="/jarvis_local/panel.js?v=0.15.0",
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
+        await data["timers"].stop()
         await hass.config_entries.async_unload_platforms(entry, ["conversation"])
         raise
     return True
 
 async def async_unload_entry(hass, entry):
     if await hass.config_entries.async_unload_platforms(entry, ["conversation"]):
+        await hass.data[DOMAIN]["timers"].stop()
         frontend.async_remove_panel(hass, "jarvis-local-app")
         hass.data[DOMAIN].pop("agent", None)
         hass.data[DOMAIN].pop("diagnostics", None)

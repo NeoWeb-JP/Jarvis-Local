@@ -16,6 +16,7 @@ class Response:
 intent.IntentResponse=Response;sys.modules[intent.__name__]=intent
 exceptions=types.ModuleType('homeassistant.exceptions');exceptions.HomeAssistantError=type('HomeAssistantError',(Exception,),{});sys.modules[exceptions.__name__]=exceptions
 storage=types.ModuleType('homeassistant.helpers.storage');storage.Store=object;sys.modules[storage.__name__]=storage
+satellite=types.ModuleType('homeassistant.components.assist_satellite');satellite.AssistSatelliteEntityFeature=types.SimpleNamespace(ANNOUNCE=1);sys.modules[satellite.__name__]=satellite
 from jarvis_test import agent as module
 async def verify(*args):return []
 async def confirmation(hass,context,fallback,action='general'):return fallback
