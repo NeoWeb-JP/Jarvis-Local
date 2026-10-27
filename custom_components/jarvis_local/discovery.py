@@ -80,7 +80,14 @@ def _lighting(hass, text, previous=None):
             ids = named
             label = display_name(hass.states.get(named[0]))
         elif len(named) > 1:
-            raise ValueError('More than one light has that name or alias. Use a unique alias. Nothing was run.')
+            options=[]
+            for entity_id in named:
+                state=hass.states.get(entity_id)
+                room=next((room['name'] for room in rooms.values() if entity_id in room['lights']), None)
+                option=display_name(state) + (' in '+room if room else '')
+                if option in options: option += ' ('+entity_id+')'
+                options.append(option)
+            raise ValueError('Which light did you mean: '+', '.join(options[:5])+'? Please repeat your command with its full name. Nothing was run.')
         elif not matches:
             # Exact numbered entity-ID families form a subgroup; no fuzzy matching.
             families = {}

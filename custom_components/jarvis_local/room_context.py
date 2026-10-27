@@ -39,7 +39,10 @@ def short_room_target(hass, area, clause):
         name_words=set(norm(display_name(state)).split())
         id_words=set(entity.split('.',1)[1].split('_'))
         if words.issubset(name_words) or words.issubset(id_words):candidates.append(entity)
-    if len(candidates)!=1:
+    if len(candidates)>1:
+        names=[display_name(hass.states.get(i)) for i in candidates]
+        raise ValueError('Which light did you mean: '+', '.join(names[:5])+'? Please repeat your command with its full name. Nothing was run.')
+    if not candidates:
         raise ValueError('Please use the full light name. I could not identify one '+target+' in '+area.name+'. Nothing was run.')
     return match[1]+candidates[0]+match[3]
 
