@@ -5,6 +5,7 @@ import re
 from time import perf_counter, monotonic
 from uuid import uuid4
 from .settings import get
+from .speaker_identity import unwrap
 from .timers import parse as parse_timer
 from .followup import followup
 from .clarification import request as clarification_request, resolve as clarification_resolve
@@ -33,6 +34,7 @@ class JarvisAgent(conversation.ConversationEntity):
         self._lock = asyncio.Lock()
         self._recent_lights = {}
         self._pending_clarifications = {}
+        self._voice_markers = {}
 
     @property
     def supported_languages(self):
@@ -47,7 +49,7 @@ class JarvisAgent(conversation.ConversationEntity):
         steps=[]
         preview=False
         area=None
-        resolved_text=user_input.text
+        resolved_text=""
         outcome='rejected'
         failure=None
         conversation_id=user_input.conversation_id or uuid4().hex
@@ -59,10 +61,15 @@ class JarvisAgent(conversation.ConversationEntity):
         followup_used=False
         corrections=[]
         command_text=user_input.text
+        voice_profile=None
+        if command_text.startswith('JVS1.'):
+            cfg=self.hass.data.get('jarvis_local',{}).get('voice_id_config',{})
+            command_text,voice_profile=unwrap(command_text,cfg.get('secret'),cfg.get('profiles',{}),self._voice_markers)
+            if not command_text:command_text=''
         try:
             area=area_override or source_area(self.hass,user_input)
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
-                command_text,corrections=correct(self.hass,user_input.text)
+                command_text,corrections=correct(self.hass,command_text)
             timer_request=parse_timer(command_text)
             pending=self._pending_clarifications.get(memory_key)
             resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
@@ -107,7 +114,7 @@ class JarvisAgent(conversation.ConversationEntity):
                         resolved_text=apply_room(command_text,area,self.hass)
                         steps, preview = plan(self.hass, resolved_text,area)
         except ValueError as err:
-            recovered = recover_off(self.hass, user_input.text) if getattr(user_input, 'device_id', None) else None
+            recovered = recover_off(self.hass, command_text) if getattr(user_input, 'device_id', None) else None
             if recovered is not None:
                 # Retry with the same context; never infer voice recovery from chat.
                 from dataclasses import replace
@@ -197,6 +204,8 @@ class JarvisAgent(conversation.ConversationEntity):
                                 routine_reply=reply['response']
                                 if step['name']=='jarvis_local_good_morning' and isinstance(routine_reply,str) and len(routine_reply.split())<9:
                                     routine_reply=await confirmation(self.hass,user_input.context,routine_reply,action='morning')
+                                if step['name']=='jarvis_local_good_morning' and voice_profile and isinstance(routine_reply,str):
+                                    routine_reply='Good morning, '+voice_profile+'. '+routine_reply
                                 replies.append(routine_reply)
                     except (HomeAssistantError, ValueError) as err:
                         outcome='failed'
@@ -218,7 +227,7 @@ class JarvisAgent(conversation.ConversationEntity):
             speech=speech.replace(' Try "help" for supported requests.', '')
         record = {
             'time':datetime.now(timezone.utc).isoformat(),
-            'received_text':user_input.text,'resolved_text':resolved_text,'transcript_corrections':corrections,
+            'received_text':command_text,'resolved_text':resolved_text,'transcript_corrections':corrections,
             'device_id':getattr(user_input,'device_id',None),
             'satellite_id':getattr(user_input,'satellite_id',None),
             'area':area.name if area else None,'preview':preview,

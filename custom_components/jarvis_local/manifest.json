@@ -1,7 +1,7 @@
 {
   "domain": "jarvis_local",
   "name": "Jarvis Local",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "documentation": "https://github.com/NeoWeb-JP/jarvis-local",
   "issue_tracker": "https://github.com/NeoWeb-JP/jarvis-local/issues",
   "dependencies": [

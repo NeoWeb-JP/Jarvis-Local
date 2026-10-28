@@ -16,6 +16,17 @@ async def async_setup_entry(hass, entry):
     data = hass.data.setdefault(DOMAIN, {})
     from .settings import load
     data["settings"] = await load(hass)
+    import json
+    def load_voice_config():
+        path=Path(hass.config.path('jarvis_voice_id.json'))
+        if not path.exists():return {}
+        with path.open(encoding='utf-8') as f:return json.load(f)
+    try:
+        voice_config=await hass.async_add_executor_job(load_voice_config)
+        data['voice_id_config']=voice_config if isinstance(voice_config,dict) else {}
+    except (OSError,ValueError):
+        data['voice_id_config']={}
+
     from .timers import Timers
     data["timers"] = Timers(hass)
     await data["timers"].start()
@@ -34,7 +45,7 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
             sidebar_title="Jarvis Local", sidebar_icon="mdi:robot",
-            module_url="/jarvis_local/panel.js?v=0.15.0",
+            module_url="/jarvis_local/panel.js?v=0.16.0",
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
         await data["timers"].stop()
