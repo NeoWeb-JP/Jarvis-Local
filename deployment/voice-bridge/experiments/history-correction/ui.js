@@ -633,7 +633,9 @@ function buildHistoryRow(item) {
   // Resolution
   if (item.current_action) {
     const by = item.current_assigned_to ? ` → ${item.current_assigned_to}` : '';
-    trace.appendChild(traceItem('Resolution', `${item.current_action}${by}`));
+    const resolution = item.current_action === 'dismiss' && item.status === 'pending'
+      ? 'Assignment undone' : `${item.current_action}${by}`;
+    trace.appendChild(traceItem('Resolution', resolution));
   } else {
     trace.appendChild(traceItem('Resolution', 'Unresolved', 'none'));
   }

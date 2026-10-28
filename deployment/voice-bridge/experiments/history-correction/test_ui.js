@@ -79,7 +79,7 @@ function row(overrides = {}) {
 
   const reassigned = row({current_assigned_to: 'Ed'});
   assert.equal(find(reassigned, e => e.className === 'history-speaker').textContent, 'Ed');
-  const unassigned = row({current_action: 'unassign', current_assigned_to: null, status: 'pending'});
+  const unassigned = row({current_action: 'dismiss', current_assigned_to: null, status: 'pending'});
   assert.equal(find(unassigned, e => e.className === 'history-speaker').textContent, 'Unknown');
   assert.equal(find(row({audio_url: null}), e => e.textContent === 'Save correction'), undefined);
   console.log('History correction UI: passed');

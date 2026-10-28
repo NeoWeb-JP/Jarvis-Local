@@ -358,7 +358,9 @@ def _correct_interaction(interaction_id: str, assigned_to: str | None,
                 stamp = max(stamp, previous + timedelta(microseconds=1))
             except (ValueError, TypeError, OverflowError):
                 raise CorrectionConflict("The previous resolution time is invalid; no changes were made.")
-        action = "assign" if target_id is not None else "unassign"
+        # The existing database restricts resolution actions via a CHECK
+        # constraint. A dismissal records the undo while status becomes pending.
+        action = "assign" if target_id is not None else "dismiss"
         status = "resolved" if target_id is not None else "pending"
         conn.execute("INSERT INTO resolutions (id, interaction_id, resolved_at, action, assigned_to) "
                      "VALUES (?, ?, ?, ?, ?)",

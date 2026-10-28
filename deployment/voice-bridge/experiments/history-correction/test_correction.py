@@ -15,6 +15,10 @@ import uuid
 
 source = open(os.path.join(os.path.dirname(__file__), 'api.py'), encoding='utf-8').read()
 tree = ast.parse(source)
+schema_source = open(os.path.join(os.path.dirname(__file__), 'test_fixtures', 'init_db.py'), encoding='utf-8').read()
+schema_tree = ast.parse(schema_source)
+SCHEMA = next(ast.literal_eval(node.value) for node in schema_tree.body
+              if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'SCHEMA' for t in node.targets))
 names = {'_get_connection', '_fetch_history', '_audio_url', '_correct_interaction', 'CorrectionConflict', 'correct_interaction'}
 selected = [node for node in tree.body if getattr(node, 'name', None) in names]
 for node in selected:
@@ -39,19 +43,14 @@ class CorrectionTests(unittest.TestCase):
         self.path = os.path.join(self.temp.name, 'speaker.db')
         namespace['DB_PATH'] = self.path
         with sqlite3.connect(self.path) as db:
-            db.executescript('''
-                CREATE TABLE enrolled_speakers (id TEXT PRIMARY KEY, name TEXT, reference_clips TEXT, interaction_count INTEGER);
-                CREATE TABLE interactions (id TEXT PRIMARY KEY, recorded_at TEXT, transcript TEXT, duration_ms INTEGER,
-                    vad_confidence REAL, matched_speaker TEXT, match_confidence REAL, status TEXT, audio_path TEXT, timings TEXT);
-                CREATE TABLE resolutions (id TEXT PRIMARY KEY, interaction_id TEXT, resolved_at TEXT, action TEXT, assigned_to TEXT);
-            ''')
-            db.executemany('INSERT INTO enrolled_speakers VALUES (?,?,?,?)', [
+            db.executescript(SCHEMA)
+            db.executemany('INSERT INTO enrolled_speakers (id, name, reference_clips, interaction_count) VALUES (?,?,?,?)', [
                 ('j', 'Jaco', json.dumps(['/audio/keep', '/audio/voice', '/audio/voice']), 12),
                 ('e', 'Ed', json.dumps(['/audio/ed']), 9),
             ])
-            db.execute('INSERT INTO interactions VALUES (?,?,?,?,?,?,?,?,?,?)',
+            db.execute('INSERT INTO interactions (id,recorded_at,transcript,duration_ms,vad_confidence,matched_speaker,match_confidence,status,audio_path,timings) VALUES (?,?,?,?,?,?,?,?,?,?)',
                 ('i', '2026-10-28T15:00:00+00:00', 'Good morning.', 800, .8, 'Jaco', .48, 'resolved', '/audio/voice', None))
-            db.execute('INSERT INTO resolutions VALUES (?,?,?,?,?)',
+            db.execute('INSERT INTO resolutions (id,interaction_id,resolved_at,action,assigned_to) VALUES (?,?,?,?,?)',
                 ('r1', 'i', '2026-10-28T15:00:01+00:00', 'assign', 'Jaco'))
 
     def tearDown(self):
@@ -83,7 +82,7 @@ class CorrectionTests(unittest.TestCase):
         namespace['_correct_interaction']('i', None, 'r1')
         refs, status, resolutions, _ = self.state()
         self.assertEqual(status, 'pending')
-        self.assertEqual(resolutions[-1][1:], ('unassign', None))
+        self.assertEqual(resolutions[-1][1:], ('dismiss', None))
         self.assertEqual(refs['Jaco'], ['/audio/keep'])
         self.assertEqual(namespace['_fetch_history']('Jaco', None, None), [])
 
@@ -96,7 +95,7 @@ class CorrectionTests(unittest.TestCase):
 
     def test_invalid_later_reference_list_rolls_back_earlier_changes(self):
         with sqlite3.connect(self.path) as db:
-            db.execute('INSERT INTO enrolled_speakers VALUES (?,?,?,?)', ('x', 'Other', 'bad json', 1))
+            db.execute('INSERT INTO enrolled_speakers (id,name,reference_clips,interaction_count) VALUES (?,?,?,?)', ('x', 'Other', 'bad json', 1))
         with self.assertRaises(namespace['CorrectionConflict']):
             namespace['_correct_interaction']('i', 'Ed', 'r1')
         with sqlite3.connect(self.path) as db:
