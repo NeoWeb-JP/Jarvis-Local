@@ -5,16 +5,29 @@ class JarvisLocalPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this.infoLoaded && !this.loadingInfo && this.root) this.loadInfo();
+    if (!this.voicePipelines && !this.loadingPipelines && this.root) this.loadVoicePipelines();
     if (this.root) {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
-      this.root.querySelector('.connection').textContent='Agent: '+id+' | '+(state && state.state!=='unavailable' ? 'Available' : 'Not available')+' | v0.17.0';
+      this.root.querySelector('.connection').textContent='Agent: '+id+' | '+(state && state.state!=='unavailable' ? 'Available' : 'Not available')+' | v0.18.0';
     }
   }
   getCardSize() { return 7; }
   build() {
     this.root = this.attachShadow({mode:'open'});
-    this.root.innerHTML = `<style>:host{display:block}ha-card[hidden]{display:none}ha-card{display:block;padding:24px;max-width:1000px;margin:20px auto;background:var(--card-background-color);border-radius:16px} :host{overflow:auto;height:100%;background:var(--primary-background-color);color:var(--primary-text-color)} .toolbar{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--app-header-background-color,var(--card-background-color));color:var(--app-header-text-color,var(--primary-text-color));position:sticky;top:0;z-index:2}.menu{min-width:48px;min-height:48px;font-size:24px;border:0;background:transparent;color:inherit;cursor:pointer}.toolbar-title{font-size:20px;font-weight:500}.fallback{margin-left:auto;color:inherit;padding:12px} .tools{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}h2{margin-top:0}.history{min-height:180px;max-height:430px;overflow:auto;white-space:pre-wrap}.line{padding:10px;margin:6px 0;background:var(--secondary-background-color);border-radius:8px}form{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}form input{min-width:150px;flex:1 1 100%}input{flex:1;min-width:0;padding:12px}button{padding:12px 16px;min-height:48px;font-size:1rem;touch-action:manipulation} .quick-commands button{margin:4px;max-width:100%;overflow-wrap:anywhere} .quick-commands h3{margin:12px 0 4px}small{display:block;margin:10px 0;color:var(--secondary-text-color)}</style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu" title="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Jarvis Local</span><button type="button" class="fallback open-settings">Jarvis settings</button><a href="/config" style="color:inherit">HA settings</a></header><ha-card class="settings-card" hidden><h2>Jarvis settings</h2><small>Choose your household entities. Lights and areas are discovered automatically. Leave a field blank to disable it or use automatic discovery where available.</small><div class="settings-fields"></div><h3>Switches used as lights</h3><small>Give each switch the name you use when speaking to Jarvis. The switch must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card><ha-card class="chat-card"><h2>Jarvis Local Chat</h2><small>Local commands, lighting and household status. Commands operate real devices. Preview a command first to inspect its targets.</small><small class="connection">Connecting to Home Assistant…</small><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button><button type="button" class="test-suite">Preview checks</button></div><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a command to put it in the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section><label>Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Diagnostics: recent voice and chat requests</summary><button type="button" class="refresh">Refresh diagnostics</button><button type="button" class="copy-diag">Copy diagnostics</button><span class="copy-status" role="status"></span><button type="button" class="clear-diag">Clear diagnostics</button><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details><div class="history" role="log" aria-live="polite"></div><form><input aria-label="Message to Jarvis" placeholder="Type a command" required><button class="send">Send</button><button class="speak" type="button" aria-label="Speak to Jarvis">🎙 Speak</button><button class="preview" type="button">Preview</button></form><button type="button" class="clear">Clear chat</button></ha-card>`;
+    this.root.innerHTML = `<style>
+:host{display:block;overflow:auto;height:100%;background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--paper-font-body1_-_font-family,system-ui)}
+.toolbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--app-header-background-color,var(--card-background-color));position:sticky;top:0;z-index:2}.toolbar-title{font-size:20px;font-weight:600}.menu{font-size:24px}.fallback{margin-left:auto}
+button,select,input{font:inherit;color:inherit}button{min-height:44px;border:1px solid var(--divider-color);border-radius:10px;padding:9px 14px;background:var(--secondary-background-color);cursor:pointer}button:hover{filter:brightness(1.1)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--primary-color)}button:disabled{opacity:.5;cursor:default}.menu{border:0;background:transparent;min-width:44px}.toolbar button{padding:8px 12px}.toolbar a{color:inherit}
+ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;padding:24px;border-radius:18px;background:var(--card-background-color)}ha-card[hidden]{display:none}h2{margin:0 0 5px}h3{margin:14px 0 6px;font-size:1rem}small{display:block;color:var(--secondary-text-color);margin:6px 0;font-size:.85rem}.connection{margin:0}.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.status{font-size:.85rem;color:var(--secondary-text-color)}.history{min-height:280px;max-height:54vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:18px 0;white-space:pre-wrap}.history:empty:before{content:'How can I assist?';color:var(--secondary-text-color);padding:12px;background:var(--secondary-background-color);border-radius:12px;align-self:flex-start}.line{padding:11px 14px;background:var(--secondary-background-color);border-radius:14px;max-width:85%;overflow-wrap:anywhere}.line.user{align-self:flex-end;background:var(--primary-color);color:var(--text-primary-color,#fff)}form{display:flex;gap:8px;align-items:center}form input{flex:1;min-width:0;border:1px solid var(--divider-color);border-radius:11px;background:var(--secondary-background-color);padding:13px}form .send{background:var(--primary-color);color:var(--text-primary-color,#fff);border-color:transparent}.speak{min-width:48px;font-size:1.2rem}.tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.quick-commands button{margin:4px}.quick-commands h3{margin:12px 0 4px}details{border-top:1px solid var(--divider-color);padding:12px 0}summary{cursor:pointer;font-weight:600}select{max-width:100%;padding:8px;border:1px solid var(--divider-color);border-radius:8px;background:var(--secondary-background-color)}.voice-status{min-height:1.2em}.settings-fields label{display:block}.room-label{display:block;margin:10px 0}@media(max-width:600px){ha-card{margin:10px;padding:16px}.toolbar{gap:8px}.toolbar a{display:none}.toolbar-title{font-size:18px}.history{min-height:220px}form{flex-wrap:wrap}form input{flex:1 1 calc(100% - 70px)}.line{max-width:92%}}
+</style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Jarvis Local</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
+<ha-card class="settings-card" hidden><h2>Jarvis settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
+<ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Jarvis</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
+<div class="history" role="log" aria-live="polite"></div>
+<form><input aria-label="Message to Jarvis" placeholder="Ask Jarvis anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Jarvis">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Jarvis reply</button>
+<details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant whose conversation agent is Jarvis Local. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
+<details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a command to put it in the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
+<details><summary>Tools and diagnostics</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button><button type="button" class="test-suite">Preview checks</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Recent voice and chat requests</summary><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></details></ha-card>`;
     this.root.querySelector('.menu').onclick = () => this.dispatchEvent(new Event('hass-toggle-menu', {bubbles:true, composed:true}));
     this.root.querySelector('.open-settings').onclick=()=>this.openSettings();
     this.root.querySelector('.close-settings').onclick=()=>this.showSettings(false);
@@ -29,20 +42,103 @@ class JarvisLocalPanel extends HTMLElement {
     this.root.querySelector('.clear-diag').onclick=async()=>{await this._hass.callWS({type:'jarvis_local/clear_diagnostics'});this.loadInfo();};
     this.root.querySelector('form').onsubmit = e => { e.preventDefault(); this.send(); };
     this.root.querySelector('.preview').onclick = () => this.send(true);
-    this.root.querySelector('.speak').onclick = () => this.openVoice();
+    this.root.querySelector('.speak').onclick = () => this.toggleVoice();
+    this.root.querySelector('.replay-voice').onclick = () => {if(this.replyAudio)this.replyAudio.play().catch(()=>this.voiceStatus('Audio playback is unavailable on this device.'));};
+    this.root.querySelector('.voice-pipeline').onchange = e => {try {localStorage.setItem('jarvis_local_voice_pipeline',e.target.value);} catch (_) {} };
+    this.loadVoicePipelines();
     for (const button of this.root.querySelectorAll('[data-command]')) button.onclick = () => {this.root.querySelector('form input').value=button.dataset.command;this.send();};
     this.root.querySelector('.clear').onclick = () => {this.root.querySelector('.history').replaceChildren();this.conversationId=undefined;};
   }
-  openVoice() {
-    // Companion app provides its own microphone and Assist interface.
-    const external = this._hass?.auth?.external;
-    if (external?.config?.hasAssist) {
-      external.fireMessage({type:'assist/show',payload:{pipeline_id:'last_used',start_listening:true}});
-      return;
-    }
-    // The HA dashboard recognises this parameter and opens its Assist dialog.
-    // Choose the Jarvis pipeline in Assist; use Back to return to this panel.
-    window.location.assign('/lovelace?conversation=1');
+  disconnectedCallback() { this.stopVoice(true); }
+  voiceStatus(message) { if(this.root) this.root.querySelector('.voice-status').textContent=message; }
+  async loadVoicePipelines() {
+    if(!this._hass || !this.root || this.loadingPipelines) return;
+    this.loadingPipelines=true;
+    const select=this.root.querySelector('.voice-pipeline');
+    try {
+      const result=await this._hass.callWS({type:'assist_pipeline/pipeline/list'});
+      const agent=this.config.agent_id || 'conversation.jarvis_local_test';
+      const pipelines=result.pipelines.filter(p=>p.conversation_engine===agent && p.stt_engine);
+      let saved='';try {saved=localStorage.getItem('jarvis_local_voice_pipeline') || '';} catch (_) {}
+      select.replaceChildren(new Option(pipelines.length?'Choose an assistant':'No Jarvis voice assistant found',''));
+      for(const pipeline of pipelines)select.add(new Option(pipeline.name,pipeline.id));
+      const preferred=pipelines.find(p=>p.id===saved) || pipelines.find(p=>p.id===result.preferred_pipeline) || (pipelines.length===1?pipelines[0]:null);
+      if(preferred)select.value=preferred.id;
+      this.voicePipelines=pipelines;
+    } catch(e) {select.replaceChildren(new Option('Unable to load assistants',''));this.voiceStatus('Could not load voice assistants: '+(e.message || String(e)));}
+    finally {this.loadingPipelines=false;}
+  }
+  async toggleVoice() {
+    if(this.voiceSession) {if(this.voiceSession.recording)this.stopVoice(false);return;}
+    if(this.busy)return;
+    await this.loadVoicePipelines();
+    const id=this.root.querySelector('.voice-pipeline').value;
+    const pipeline=(this.voicePipelines || []).find(p=>p.id===id);
+    if(!pipeline){this.root.querySelector('.voice-options').open=true;this.voiceStatus('Choose a voice assistant configured with Jarvis Local and speech-to-text.');return;}
+    if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.AudioContext){this.voiceStatus('Microphone needs a secure connection and browser permission.');return;}
+    const session={recording:true,buffer:[],handler:null,ready:false,unsub:null,ended:false};
+    this.voiceSession=session;this.busy=true;
+    const button=this.root.querySelector('.speak');button.textContent='■';button.setAttribute('aria-label','Stop recording');this.voiceStatus('Listening. Tap the microphone again when finished.');
+    try {
+      session.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      if(session.ended){session.stream.getTracks().forEach(t=>t.stop());return;}
+      session.context=new AudioContext();await session.context.resume();
+      if(session.ended){session.context.close();return;}
+      session.source=session.context.createMediaStreamSource(session.stream);
+      session.node=session.context.createScriptProcessor(4096,1,1);
+      session.gain=session.context.createGain();session.gain.gain.value=0;
+      session.node.onaudioprocess=e=>{
+        if(!session.recording)return;
+        const input=e.inputBuffer.getChannelData(0),pcm=new Int16Array(input.length);
+        for(let i=0;i<input.length;i++){const x=Math.max(-1,Math.min(1,input[i]));pcm[i]=x<0?x*32768:x*32767;}
+        if(session.ready)this.sendVoiceChunk(session,pcm);else session.buffer.push(pcm);
+      };
+      session.source.connect(session.node);session.node.connect(session.gain);session.gain.connect(session.context.destination);
+      session.timer=setTimeout(()=>this.stopVoice(false),30000);
+      const options={type:'assist_pipeline/run',start_stage:'stt',end_stage:pipeline.tts_engine?'tts':'intent',input:{sample_rate:session.context.sampleRate},pipeline:id};
+      if(this.conversationId)options.conversation_id=this.conversationId;
+      const unsubscribe=await this._hass.connection.subscribeMessage(e=>this.voiceEvent(session,e),options);
+      if(session.ended)unsubscribe();else session.unsub=unsubscribe;
+    } catch(e) {if(!session.ended){this.line('Error','Voice input could not start: '+(e.message || String(e)));this.stopVoice(true);}}
+  }
+  sendVoiceChunk(session,pcm) {
+    if(session.handler===null || session.ended)return;
+    const packet=new Uint8Array(1+pcm.byteLength);packet[0]=session.handler;packet.set(new Uint8Array(pcm.buffer,pcm.byteOffset,pcm.byteLength),1);
+    try {this._hass.connection.socket.send(packet);} catch(e) {this.line('Error','Voice connection was interrupted.');this.stopVoice(true);}
+  }
+  voiceEvent(session,event) {
+    if(session.ended)return;
+    if(event.type==='run-start')session.handler=event.data.runner_data.stt_binary_handler_id;
+    else if(event.type==='stt-start'){
+      if(session.handler===null){this.line('Error','Voice assistant did not provide an audio channel.');this.stopVoice(true);return;}
+      session.ready=true;for(const pcm of session.buffer)this.sendVoiceChunk(session,pcm);session.buffer=[];
+      if(!session.recording)this.sendVoiceChunk(session,new Int16Array());
+    } else if(event.type==='stt-end'){
+      this.stopVoiceCapture(session);this.voiceStatus('Thinking…');
+      const text=event.data.stt_output?.text;if(text){this.line('You',text);this.trackCommand(text);}
+    } else if(event.type==='intent-end'){
+      const reply=event.data.intent_output;this.conversationId=reply.conversation_id;
+      this.line('Jarvis',reply.response?.speech?.plain?.speech || 'No text response.');
+    } else if(event.type==='tts-end') {
+      const url=event.data.tts_output?.url;
+      if(url){if(this.replyAudio)this.replyAudio.pause();this.replyAudio=new Audio(this._hass.hassUrl ? this._hass.hassUrl(url) : url);this.root.querySelector('.replay-voice').hidden=false;this.replyAudio.play().catch(()=>this.voiceStatus('Tap Play Jarvis reply to hear the response.'));}
+    } else if(event.type==='error'){this.line('Error',event.data?.message || 'Voice assistant failed.');this.stopVoice(true);}
+    else if(event.type==='run-end'){this.stopVoice(true);this.loadInfo();}
+  }
+  stopVoiceCapture(session) {
+    if(!session)return;session.recording=false;clearTimeout(session.timer);
+    if(session.node){session.node.onaudioprocess=null;session.node.disconnect();}
+    if(session.source)session.source.disconnect();if(session.gain)session.gain.disconnect();
+    if(session.stream)session.stream.getTracks().forEach(t=>t.stop());
+    if(session.context && session.context.state!=='closed')session.context.close().catch(()=>{});
+    if(this.root){const button=this.root.querySelector('.speak');button.textContent='🎙';button.setAttribute('aria-label','Start voice input');}
+  }
+  stopVoice(cancel) {
+    const session=this.voiceSession;if(!session)return;
+    this.stopVoiceCapture(session);
+    if(!cancel && !session.context){session.ended=true;this.voiceSession=null;this.busy=false;this.voiceStatus('Voice input cancelled.');return;}
+    if(!cancel){if(session.ready)this.sendVoiceChunk(session,new Int16Array());this.voiceStatus('Processing…');return;}
+    session.ended=true;if(session.unsub)session.unsub();this.voiceSession=null;this.busy=false;if(this.root && this.root.querySelector('.replay-voice').hidden)this.voiceStatus('');
   }
   readQuick() {
     this.favourites=[];this.commandHistory=[];
@@ -177,7 +273,7 @@ class JarvisLocalPanel extends HTMLElement {
     } catch(e) {this.root.querySelector('.diagnostics').textContent=e.message || String(e);}
     finally {this.loadingInfo=false;}
   }
-  line(who, text) {const el=document.createElement('div');el.className='line';el.textContent=who+': '+text;const box=this.root.querySelector('.history');box.append(el);box.scrollTop=box.scrollHeight;}
+  line(who, text) {const el=document.createElement('div');el.className='line'+(who==='You'?' user':'');el.textContent=who+': '+text;const box=this.root.querySelector('.history');box.append(el);box.scrollTop=box.scrollHeight;}
   async send(preview=false) {
     if(this.busy)return;
     const input=this.root.querySelector('form input');const original=input.value.trim();if(!original)return;const text=(preview ? 'preview ' : '')+original;
@@ -185,7 +281,7 @@ class JarvisLocalPanel extends HTMLElement {
     if(!this._hass?.states[agent] || this._hass.states[agent].state==='unavailable'){this.line('Status','Jarvis Local is not loaded. Check the integration startup logs. No command was sent.');return;}
     this.busy=true;this.root.querySelector('.send').disabled=true;input.value='';this.line('You',text);
     const start=performance.now();
-    try {const request={type:'jarvis_local/process',text};const room=this.root.querySelector('.room').value;if(room)request.area_id=room;if(this.conversationId)request.conversation_id=this.conversationId;const reply=await this._hass.callWS(request);if(!preview)this.trackCommand(original);this.conversationId=reply.conversation_id;this.line('Jarvis',reply.response?.speech?.plain?.speech || '(No text reply. The routine may announce through the Bedroom Muse.)');this.line('Timing',Math.round(performance.now()-start)+' ms, including routine execution');}
+    try {const request={type:'jarvis_local/process',text};const room=this.root.querySelector('.room').value;if(room)request.area_id=room;if(this.conversationId)request.conversation_id=this.conversationId;const reply=await this._hass.callWS(request);if(!preview)this.trackCommand(original);this.conversationId=reply.conversation_id;this.line('Jarvis',reply.response?.speech?.plain?.speech || '(No text reply. The routine may announce through the Bedroom Muse.)');}
     catch(e){this.line('Error',e.message || String(e));}
     finally{this.loadInfo();this.busy=false;this.root.querySelector('.send').disabled=false;input.focus();}
   }
