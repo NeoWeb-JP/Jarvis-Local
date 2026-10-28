@@ -32,7 +32,14 @@ cleanup() {
   trap - EXIT
   if [ "$rc" -ne 0 ] && [ "$started" -eq 1 ]; then
     echo 'Deployment failed; checking whether the original Compose configuration can be restored.' >&2
-    if sha256sum -c "$stage/source-checksums.txt" >/dev/null 2>&1 && \
+    writable_safe=1
+    if docker inspect "$live" >/dev/null 2>&1; then
+      if ! docker diff "$live" > "$work/rollback-diff.txt" || \
+         ! python3 "$work/check_writable_diff.py" "$work/rollback-diff.txt" >/dev/null 2>&1; then
+        writable_safe=0
+      fi
+    fi
+    if [ "$writable_safe" -eq 1 ] && sha256sum -c "$stage/source-checksums.txt" >/dev/null 2>&1 && \
        [ "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" = "$expected_image" ] && \
        compose_old config --format json > "$work/rollback-model.json" 2>/dev/null && \
        python3 -c 'import json,sys; a=json.load(open(sys.argv[1])); b=json.load(open(sys.argv[2])); sys.exit(0 if a==b else 1)' "$work/before.json" "$work/rollback-model.json"; then
@@ -42,7 +49,7 @@ cleanup() {
         echo 'Automatic rollback failed. Inspect the container and backup before retrying.' >&2
       fi
     else
-      echo 'Configuration or image changed; automatic rollback was not attempted.' >&2
+      echo 'Configuration, image or writable-layer state needs review; automatic rollback was not attempted.' >&2
     fi
     echo "Backup: $backup. Do not restore the database snapshot over newer data." >&2
   fi
@@ -64,19 +71,16 @@ file_sha() { docker exec "$live" sha256sum "$1" | awk '{print $1}'; }
 [ "$(file_sha /app/pipeline/models/speaker_id.py)" = fb5c6f04121e61a4ae1e7d84cc8615c22eaa032aaa58154bf324952f98c9640f ]
 
 work=$(mktemp -d "$stage/private.deploy.XXXXXX")
-[ -f "$stage/reviewed-container-diff.txt" ] && [ ! -L "$stage/reviewed-container-diff.txt" ] || {
-  echo 'A reviewed container writable-layer diff is required before recreation.' >&2; exit 1;
-}
-docker diff "$live" > "$work/diff-raw.txt"
-LC_ALL=C sort "$work/diff-raw.txt" > "$work/diff-sorted.txt"
-cmp -s "$stage/reviewed-container-diff.txt" "$work/diff-sorted.txt" || {
-  echo 'Container writable-layer changes differ from the reviewed list.' >&2; exit 1;
-}
 curl -fsS "$base/check_runtime.py" -o "$work/check_runtime.py"
 curl -fsS "$base/check_post_deploy.py" -o "$work/check_post_deploy.py"
+diff_url='https://raw.githubusercontent.com/NeoWeb-JP/Jarvis-Local/79b1fdd9edd3a373680904beaf3b1aa2cb47c96c/deployment/voice-bridge/experiments/history-correction/check_writable_diff.py'
+curl -fsS "$diff_url" -o "$work/check_writable_diff.py"
 printf '%s\n' \
  "51c8efba255b251d6bace8a7f2845574a4535e030e23ecaa46eed9c2ed8c0398  $work/check_runtime.py" \
- "61d07eacfe5b66ca1dfd2f202a7fb4157541f1241e0d493c1f3e700b5782d249  $work/check_post_deploy.py" | sha256sum -c -
+ "61d07eacfe5b66ca1dfd2f202a7fb4157541f1241e0d493c1f3e700b5782d249  $work/check_post_deploy.py" \
+ "c016e23df627c06770c8eded65b1935f38cae571da46ab7173365cfaed19fea7  $work/check_writable_diff.py" | sha256sum -c -
+docker diff "$live" > "$work/diff-raw.txt"
+python3 "$work/check_writable_diff.py" "$work/diff-raw.txt"
 
 cd "$root"
 compose_old config --format json > "$work/before.json"
@@ -144,10 +148,11 @@ echo "Future Compose wrapper: $wrapper"
 
 # Check again immediately before recreation; the writable layer is discarded.
 docker diff "$live" > "$work/diff-latest.txt"
-LC_ALL=C sort "$work/diff-latest.txt" > "$work/diff-latest-sorted.txt"
-cmp -s "$stage/reviewed-container-diff.txt" "$work/diff-latest-sorted.txt" || {
-  echo 'Container writable layer changed during preparation; stopping.' >&2; exit 1;
-}
+python3 "$work/check_writable_diff.py" "$work/diff-latest.txt"
+cp "$work/diff-latest.txt" "$backup/container-diff.txt"
+if grep -Fxq 'A /root/.cache/huggingface/.agent_harnesses.json' "$work/diff-latest.txt"; then
+  docker cp "$live:/root/.cache/huggingface/.agent_harnesses.json" "$backup/huggingface-agent-cache.json"
+fi
 started=1
 compose_new up -d --no-deps --no-build --pull never --force-recreate voicepipeline
 [ "$(docker inspect "$live" --format '{{.State.Running}}')" = true ]

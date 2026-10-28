@@ -52,9 +52,14 @@ file_sha() { docker exec "$live" sha256sum "$1" | awk '{print $1}'; }
 work=$(mktemp -d "$stage/private.rollback.XXXXXX")
 curl -fsS "$base/check_runtime.py" -o "$work/check_runtime.py"
 curl -fsS "$base/check_post_deploy.py" -o "$work/check_post_deploy.py"
+diff_url='https://raw.githubusercontent.com/NeoWeb-JP/Jarvis-Local/79b1fdd9edd3a373680904beaf3b1aa2cb47c96c/deployment/voice-bridge/experiments/history-correction/check_writable_diff.py'
+curl -fsS "$diff_url" -o "$work/check_writable_diff.py"
 printf '%s\n' \
  "51c8efba255b251d6bace8a7f2845574a4535e030e23ecaa46eed9c2ed8c0398  $work/check_runtime.py" \
- "61d07eacfe5b66ca1dfd2f202a7fb4157541f1241e0d493c1f3e700b5782d249  $work/check_post_deploy.py" | sha256sum -c -
+ "61d07eacfe5b66ca1dfd2f202a7fb4157541f1241e0d493c1f3e700b5782d249  $work/check_post_deploy.py" \
+ "c016e23df627c06770c8eded65b1935f38cae571da46ab7173365cfaed19fea7  $work/check_writable_diff.py" | sha256sum -c -
+docker diff "$live" > "$work/diff.txt"
+python3 "$work/check_writable_diff.py" "$work/diff.txt"
 cd "$root"
 compose_old config --format json > "$work/before.json"
 compose_new config --format json > "$work/after.json"
@@ -80,6 +85,8 @@ if not any(str(b.get('HostPort')) == '8000' and (b.get('HostIp') or '') in ('', 
     raise SystemExit('Cannot check the management API on localhost:8000; stopping.')
 PY
 
+docker diff "$live" > "$work/diff-latest.txt"
+python3 "$work/check_writable_diff.py" "$work/diff-latest.txt"
 started=1
 compose_old up -d --no-deps --no-build --pull never --force-recreate voicepipeline
 [ "$(docker inspect "$live" --format '{{.State.Running}}')" = true ]

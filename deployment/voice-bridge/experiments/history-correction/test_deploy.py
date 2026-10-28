@@ -81,7 +81,8 @@ elif cmd=='compose':
 elif cmd=='image':
  if '--format' in args: print(image)
  else: print(json.dumps([{'Id':image,'Config':{'Env':['PATH=/bin']}}]))
-elif cmd=='diff': print('C /app\nA /app/__pycache__')
+elif cmd=='diff':
+ print('A /app/config.json' if os.getenv('FAKE_LAYER_DRIFT')=='1' else 'C /app\nA /app/api/__pycache__')
 else: raise SystemExit('unexpected docker command '+cmd)
 '''
 FAKE_CURL = r'''#!/usr/bin/env python3
@@ -108,7 +109,6 @@ class DeployTests(unittest.TestCase):
                     p=stage/name; p.write_bytes((HERE/name).read_bytes()); sources.append(p)
                 p=stage/'compose.history-correction.yaml'; p.write_text('fixture'); sources.append(p)
                 (stage/'source-checksums.txt').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p}\n' for p in sources))
-                (stage/'reviewed-container-diff.txt').write_text('changed\n' if layer_drift else 'A /app/__pycache__\nC /app\n')
                 if drift: (live/'compose.yaml').write_text('changed')
                 with sqlite3.connect(root/'snapshot.db') as db:
                     db.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)')
@@ -117,7 +117,7 @@ class DeployTests(unittest.TestCase):
                     p=root/'bin'/name; p.write_text(content); p.chmod(0o755)
                 script=(HERE/'deploy-production.sh').read_text().replace('/opt/voicepipeline',str(live))
                 path=root/'deploy.sh'; path.write_text(script)
-                env=dict(os.environ, FAKE_ROOT=str(root), FAKE_STAGE=str(stage), FAKE_CANDIDATE=str(HERE), FAKE_FIXTURES=str(FIXTURES), FAKE_FAIL='1' if failure else '0', PATH=str(root/'bin')+os.pathsep+os.environ['PATH'])
+                env=dict(os.environ, FAKE_ROOT=str(root), FAKE_STAGE=str(stage), FAKE_CANDIDATE=str(HERE), FAKE_FIXTURES=str(FIXTURES), FAKE_FAIL='1' if failure else '0', FAKE_LAYER_DRIFT='1' if layer_drift else '0', PATH=str(root/'bin')+os.pathsep+os.environ['PATH'])
                 result=subprocess.run(['sh',str(path),str(stage)],env=env,capture_output=True,text=True)
                 self.assertEqual(result.returncode==0,not failure and not drift and not layer_drift,result.stdout+result.stderr)
                 self.assertNotIn('DO_NOT_EXPOSE',result.stdout+result.stderr)
