@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.20.0';
+      this.root.querySelector('.connection').textContent='v0.20.1';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -125,9 +125,10 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       if(!session.recording)this.sendVoiceChunk(session,new Int16Array());
     } else if(event.type==='stt-end'){
       this.stopVoiceCapture(session);this.voiceStatus('Thinking…');
-      const text=event.data.stt_output?.text;if(text){this.line('You',text);this.trackCommand(text);}
+      const text=event.data.stt_output?.text;if(text){session.transcript=text;this.line('You',text);}
     } else if(event.type==='intent-end'){
       const reply=event.data.intent_output;this.conversationId=reply.conversation_id;
+      if(event.data.processed_locally===false && reply.response?.speech?.plain?.extra_data?.jarvis_local?.trackable===true && session.transcript)this.trackCommand(session.transcript);
       this.line('Jarvis',reply.response?.speech?.plain?.speech || 'No text response.');
       if(event.data.processed_locally===true)this.line('Routing','Home Assistant processed this request locally. It may have matched a sentence trigger before Jarvis. Check the Assist debug trace.');
     } else if(event.type==='tts-end') {
@@ -154,13 +155,15 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   readQuick() {
     this.favourites=[];this.commandHistory=[];
     try {
-      const value=JSON.parse(localStorage.getItem('jarvis_local_quick_commands_v1') || '{}');
+      const previous=JSON.parse(localStorage.getItem('jarvis_local_quick_commands_v1') || '{}');
+      const saved=localStorage.getItem('jarvis_local_quick_commands_v2');
+      const value=saved ? JSON.parse(saved) : {favourites:previous.favourites,history:[]};
       if(Array.isArray(value.favourites))this.favourites=value.favourites.filter(v=>typeof v==='string' && v.length<=150).slice(0,20);
       if(Array.isArray(value.history))this.commandHistory=value.history.filter(v=>v && typeof v.text==='string' && v.text.length<=150 && Number.isFinite(v.count) && v.count>0).slice(0,50);
     } catch(e) {this.quickStorageUnavailable=true;}
   }
   saveQuick() {
-    try {localStorage.setItem('jarvis_local_quick_commands_v1',JSON.stringify({favourites:this.favourites,history:this.commandHistory}));this.quickStorageUnavailable=false;}
+    try {localStorage.setItem('jarvis_local_quick_commands_v2',JSON.stringify({favourites:this.favourites,history:this.commandHistory}));this.quickStorageUnavailable=false;}
     catch(e){this.quickStorageUnavailable=true;}
     this.root.querySelector('.quick-status').textContent=this.quickStorageUnavailable?'Unable to save on this device; commands will be lost when the page closes.':'';
   }
@@ -302,7 +305,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     if(!this._hass?.states[agent] || this._hass.states[agent].state==='unavailable'){this.line('Status','Jarvis Local is not loaded. Check the integration startup logs. No command was sent.');return;}
     this.busy=true;this.root.querySelector('.send').disabled=true;input.value='';this.line('You',text);
     const start=performance.now();
-    try {const request={type:'jarvis_local/process',text};const room=this.root.querySelector('.room').value;if(room)request.area_id=room;if(this.conversationId)request.conversation_id=this.conversationId;const reply=await this._hass.callWS(request);if(!preview)this.trackCommand(original);this.conversationId=reply.conversation_id;this.line('Jarvis',reply.response?.speech?.plain?.speech || '(No text reply. The routine may announce through the Bedroom Muse.)');}
+    try {const request={type:'jarvis_local/process',text};const room=this.root.querySelector('.room').value;if(room)request.area_id=room;if(this.conversationId)request.conversation_id=this.conversationId;const reply=await this._hass.callWS(request);if(!preview && reply.response?.speech?.plain?.extra_data?.jarvis_local?.trackable===true)this.trackCommand(original);this.conversationId=reply.conversation_id;this.line('Jarvis',reply.response?.speech?.plain?.speech || '(No text reply. The routine may announce through the Bedroom Muse.)');}
     catch(e){this.line('Error',e.message || String(e));}
     finally{this.loadInfo();this.busy=false;this.root.querySelector('.send').disabled=false;input.focus();}
   }

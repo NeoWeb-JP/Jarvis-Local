@@ -12,7 +12,7 @@ sys.modules[conv.__name__]=conv
 intent=types.ModuleType('homeassistant.helpers.intent')
 class Response:
     def __init__(self,language):self.speech=''
-    def async_set_speech(self,speech):self.speech=speech
+    def async_set_speech(self,speech,extra_data=None):self.speech=speech;self.extra_data=extra_data
 intent.IntentResponse=Response;sys.modules[intent.__name__]=intent
 exceptions=types.ModuleType('homeassistant.exceptions');exceptions.HomeAssistantError=type('HomeAssistantError',(Exception,),{});sys.modules[exceptions.__name__]=exceptions
 storage=types.ModuleType('homeassistant.helpers.storage');storage.Store=object;sys.modules[storage.__name__]=storage
@@ -36,6 +36,15 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(reply.continue_conversation);self.assertEqual(self.hass.services.calls[0][0][2]['entity_id'],['light.bedroom'])
         await self.agent.async_handle(UserInput('turn it off'))
         self.assertEqual(self.hass.services.calls[1][0][1],'turn_off')
+    async def test_frequency_metadata_requires_success(self):
+        rejected=await self.agent.async_handle(UserInput('offers life on'))
+        self.assertFalse(rejected.response.extra_data['jarvis_local']['trackable'])
+        clarification=await self.agent.async_handle(UserInput('lamp on'))
+        self.assertFalse(clarification.response.extra_data['jarvis_local']['trackable'])
+        completed=await self.agent.async_handle(UserInput('bedroom'))
+        self.assertTrue(completed.response.extra_data['jarvis_local']['trackable'])
+        preview=await self.agent.async_handle(UserInput('preview turn bedroom light on'))
+        self.assertFalse(preview.response.extra_data['jarvis_local']['trackable'])
     async def test_other_conversation_cannot_answer(self):
         await self.agent.async_handle(UserInput('lamp on'))
         await self.agent.async_handle(UserInput('bedroom','other'))

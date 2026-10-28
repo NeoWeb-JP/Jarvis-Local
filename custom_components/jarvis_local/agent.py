@@ -238,6 +238,9 @@ class JarvisAgent(conversation.ConversationEntity):
         history=self.hass.data.setdefault('jarvis_local',{}).setdefault('diagnostics',[])
         history.append(record)
         del history[:-20]
-        result.async_set_speech(speech)
+        trackable = (outcome == 'completed' and not preview and not continue_conversation
+                     and bool(steps) and all(step.get('kind') in {'light', 'switch_light', 'brightness', 'media_control', 'music', 'action', 'status'}
+                                             and not step.get('unverified') for step in steps))
+        result.async_set_speech(speech, extra_data={'jarvis_local': {'trackable': trackable}})
         _LOGGER.info('Jarvis local processing: %.0f ms', (perf_counter()-start)*1000)
         return conversation.ConversationResult(response=result, conversation_id=conversation_id, continue_conversation=continue_conversation)
