@@ -1,16 +1,16 @@
 {
   "domain": "jarvis_local",
   "name": "Jarvis Local",
-  "version": "0.24.0",
-  "documentation": "https://github.com/NeoWeb-JP/jarvis-local",
-  "issue_tracker": "https://github.com/NeoWeb-JP/jarvis-local/issues",
+  "codeowners": [],
+  "config_flow": true,
   "dependencies": [
     "conversation",
     "frontend",
     "http",
     "panel_custom"
   ],
-  "codeowners": [],
+  "documentation": "https://github.com/NeoWeb-JP/jarvis-local",
   "iot_class": "local_push",
-  "config_flow": true
+  "issue_tracker": "https://github.com/NeoWeb-JP/jarvis-local/issues",
+  "version": "0.24.0"
 }
