@@ -65,15 +65,17 @@ shutil.copyfile(Path(os.environ['FAKE_CANDIDATE']) / url.rsplit('/', 1)[1], dest
 
 class InstallerTests(unittest.TestCase):
     def test_install_and_failure_restore(self):
-        for inject_failure in (False, True):
-            with self.subTest(inject_failure=inject_failure), tempfile.TemporaryDirectory() as directory:
+        for legacy, inject_failure in ((False, False), (False, True), (True, False), (True, True)):
+            with self.subTest(legacy=legacy, inject_failure=inject_failure), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 for folder in ('live/data', 'live/models', 'test/data', 'test/models', 'container/app/api', 'container/app/ui', 'bin'):
                     (root / folder).mkdir(parents=True)
                 (root / 'state').write_text('true')
                 if inject_failure: (root / 'inject-failure').touch()
-                (root / 'container/app/api/main.py').write_bytes((UPSTREAM / 'api.py').read_bytes())
-                (root / 'container/app/ui/app.js').write_bytes((UPSTREAM / 'ui.js').read_bytes())
+                old_api = UPSTREAM / ('legacy-api.py' if legacy else 'api.py')
+                old_ui = UPSTREAM / ('legacy-ui.js' if legacy else 'ui.js')
+                (root / 'container/app/api/main.py').write_bytes(old_api.read_bytes())
+                (root / 'container/app/ui/app.js').write_bytes(old_ui.read_bytes())
                 for name, content in [('docker', FAKE_DOCKER), ('curl', FAKE_CURL)]:
                     target = root / 'bin' / name
                     target.write_text(content)
@@ -87,8 +89,8 @@ class InstallerTests(unittest.TestCase):
                            PATH=str(root / 'bin') + os.pathsep + os.environ['PATH'])
                 result = subprocess.run(['sh', str(script_path)], env=env, capture_output=True, text=True)
                 self.assertEqual(result.returncode == 0, not inject_failure, result.stdout + result.stderr)
-                expected_api = UPSTREAM / 'api.py' if inject_failure else HERE / 'api.py'
-                expected_ui = UPSTREAM / 'ui.js' if inject_failure else HERE / 'ui.js'
+                expected_api = old_api if inject_failure else HERE / 'api.py'
+                expected_ui = old_ui if inject_failure else HERE / 'ui.js'
                 self.assertEqual((root / 'container/app/api/main.py').read_bytes(), expected_api.read_bytes())
                 self.assertEqual((root / 'container/app/ui/app.js').read_bytes(), expected_ui.read_bytes())
                 self.assertEqual((root / 'state').read_text(), 'true')

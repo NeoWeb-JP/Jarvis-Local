@@ -6,6 +6,6 @@ History provides a correction control for resolved or dismissed recordings. Chan
 
 The original pipeline match and its confidence remain unchanged; the History summary shows a confidence only when it corresponds to the displayed speaker. Filters use the corrected assignment. These changes do not restore references previously rotated out by earlier incorrect assignments or recalculate historical interaction counts and averages. Audio paths must be available in the database to identify references safely. Cache invalidation is requested after saving; the service's existing scheduled refresh may take several minutes. A failure to request refresh is reported separately from a successful database correction.
 
-`test_correction.py` uses temporary SQLite fixtures and extracts the candidate's real backend functions using Python AST; it does not start FastAPI. `test_ui.js` runs the History controls with a simulated DOM. An isolated live API, browser and voice test remains necessary.
+`test_correction.py` uses temporary SQLite databases built from the upstream schema and extracts the candidate's real backend functions using Python AST; it does not start FastAPI. `test_ui.js` runs the History controls with a simulated DOM. An isolated live API, browser and voice test remains necessary.
 
 `test_installer.py` exercises successful installation and a copy-failure rollback using fake Docker and temporary files; it never controls a real container. The original upstream files used by that test are included under `test_fixtures`.

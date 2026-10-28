@@ -5,7 +5,7 @@ umask 077
 live=voicepipeline
 test_container=voicepipeline-isolated-test
 test_root=/opt/voicepipeline-isolated-test
-revision=e71c2d7e11800152ecefb67f327f4d589dfea9a0
+revision=b3c3b64881c94576a24824cba0c0ab5ed5cdb298
 base="https://raw.githubusercontent.com/NeoWeb-JP/Jarvis-Local/$revision/deployment/voice-bridge/experiments/history-correction"
 backup=''
 work=''
@@ -67,15 +67,18 @@ if any(value not in ("false", "0", "off", "") for value in values):
 
 test_api=$(docker exec "$test_container" sha256sum /app/api/main.py | awk '{print $1}')
 test_ui=$(docker exec "$test_container" sha256sum /app/ui/app.js | awk '{print $1}')
-[ "$test_api" = 83b8285bc91b451fcf1e1b80db141cf9d3f1620026186d7f511f128066e8c386 ]
-[ "$test_ui" = e4156a695b1c6a20e8a1700a565b3070918174fd805d1fd9aeb87cb1066d7be1 ]
+case "$test_api:$test_ui" in
+  83b8285bc91b451fcf1e1b80db141cf9d3f1620026186d7f511f128066e8c386:e4156a695b1c6a20e8a1700a565b3070918174fd805d1fd9aeb87cb1066d7be1|c091056b85fdddd484111424969b80e784e030c44b184e9f384d36269db128b6:0da39a86f952369c7438ad774f2d4dabea700cf252fd88a3c3330f953fd8a8e4)
+    echo 'Verified original files or previous correction candidate.';;
+  *) echo 'The test app differs from both known versions; stopping.' >&2; exit 1;;
+esac
 
 work=$(mktemp -d /tmp/jarvis-correction.XXXXXX)
 curl -fsS "$base/api.py" -o "$work/api.py"
 curl -fsS "$base/ui.js" -o "$work/ui.js"
 printf '%s\n' \
-  "c091056b85fdddd484111424969b80e784e030c44b184e9f384d36269db128b6  $work/api.py" \
-  "0da39a86f952369c7438ad774f2d4dabea700cf252fd88a3c3330f953fd8a8e4  $work/ui.js" | sha256sum -c -
+  "56a085ecf601ba243d908f9acfd19fd175cb4ed5f411b58b50b6893f9c782a47  $work/api.py" \
+  "bd8584122297456d6b7a67112f030ed62a72aae8485b68201ad2dea086e66e87  $work/ui.js" | sha256sum -c -
 
 backup=$(mktemp -d "$test_root/history-correction-backup.XXXXXX")
 docker cp "$test_container:/app/api/main.py" "$backup/api.py"
@@ -104,8 +107,8 @@ docker cp "$work/ui.js" "$test_container:/app/ui/app.js"
 docker start "$test_container" >/dev/null
 new_api=$(docker exec "$test_container" sha256sum /app/api/main.py | awk '{print $1}')
 new_ui=$(docker exec "$test_container" sha256sum /app/ui/app.js | awk '{print $1}')
-[ "$new_api" = c091056b85fdddd484111424969b80e784e030c44b184e9f384d36269db128b6 ]
-[ "$new_ui" = 0da39a86f952369c7438ad774f2d4dabea700cf252fd88a3c3330f953fd8a8e4 ]
+[ "$new_api" = 56a085ecf601ba243d908f9acfd19fd175cb4ed5f411b58b50b6893f9c782a47 ]
+[ "$new_ui" = bd8584122297456d6b7a67112f030ed62a72aae8485b68201ad2dea086e66e87 ]
 changed=0
 echo 'History correction candidate installed in the isolated container.'
 echo 'Production was not changed or restarted.'
