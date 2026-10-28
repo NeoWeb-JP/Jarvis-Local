@@ -70,6 +70,17 @@ class Commands(unittest.TestCase):
         steps,preview=plan(self.hass,'turn office and bedroom lamp on')
         self.assertEqual([step['data']['entity_id'] for step in steps],[['light.office'],['light.bedroom']])
         with self.assertRaises(ValueError):plan(self.hass,'turn office and missing light on')
+    def test_voice_of_correction_requires_both_targets(self):
+        from jarvis_test.transcript import correct
+        self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
+        self.hass.states.values['switch.queen']=State('switch.queen','Queen Lamp')
+        corrected,changes=correct(self.hass,'Office and Queen Lamp of.')
+        self.assertEqual(corrected,'office and queen lamp off')
+        self.assertIn('trailing of -> off',changes)
+        original='Office and missing lamp of.'
+        self.assertEqual(correct(self.hass,original),(original,[]))
+    def test_back_on_followup(self):
+        self.assertEqual(followup('turn them back on.'),('turn on __previous_lights__',False))
     def test_followup_request(self):
         self.assertIsNotNone(followup('set them to 30 percent'))
     def add_spotlight(self, entity_id, name, area):

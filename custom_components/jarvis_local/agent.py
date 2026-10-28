@@ -9,7 +9,7 @@ from .speaker_identity import unwrap, bridge_profile
 from .morning import morning_reply
 from .social import social_reply
 from .timers import parse as parse_timer
-from .followup import followup
+from .followup import followup, followup_steps
 from .clarification import request as clarification_request, resolve as clarification_resolve
 from .personality import confirmation
 from .transcript import correct
@@ -73,7 +73,7 @@ class JarvisAgent(conversation.ConversationEntity):
         try:
             area=area_override or source_area(self.hass,user_input)
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
-                command_text,corrections=correct(self.hass,command_text)
+                command_text,corrections=correct(self.hass,command_text,area)
             timer_request=parse_timer(command_text)
             pending=self._pending_clarifications.get(memory_key)
             resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
@@ -113,9 +113,7 @@ class JarvisAgent(conversation.ConversationEntity):
                         if previous is None:
                             raise ValueError('Which lights do you mean? Please name the room or lights.')
                         resolved_text,preview=continuation
-                        step=lighting(self.hass,resolved_text,previous['ids'])
-                        if step is None:raise ValueError('Please name the lights again.')
-                        steps=[step]
+                        steps=followup_steps(self.hass,resolved_text,previous['ids'])
                         followup_used=True
                     else:
                         resolved_text=apply_room(command_text,area,self.hass)
@@ -222,11 +220,11 @@ class JarvisAgent(conversation.ConversationEntity):
                     light_ids=[]
                     invalidated=False
                     for step in steps:
-                        if step['kind']=='light' and not step.get('unverified'):
+                        if step['kind'] in {'light','switch_light'} and not step.get('unverified'):
                             light_ids.extend(step['data']['entity_id'])
                         elif step['kind']=='brightness' and step['calls'] and not step.get('unverified'):
                             light_ids.extend(i for call in step['calls'] for i in call['data']['entity_id'])
-                        elif step['kind'] in {'action','switch_light','guest'} or step.get('unverified'):
+                        elif step['kind'] in {'action','guest'} or step.get('unverified'):
                             invalidated=True
                     if invalidated:
                         self._recent_lights.pop(memory_key,None)
@@ -234,6 +232,8 @@ class JarvisAgent(conversation.ConversationEntity):
                         self._recent_lights[memory_key]={'at':monotonic(),'ids':list(dict.fromkeys(light_ids))}
                     while len(self._recent_lights)>64:
                         del self._recent_lights[next(iter(self._recent_lights))]
+        if outcome in {'failed','rejected'}:
+            self._recent_lights.pop(memory_key,None)
         if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
             speech=speech.replace(' Try "help" for supported requests.', '')
         record = {

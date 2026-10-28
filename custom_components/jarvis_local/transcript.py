@@ -4,7 +4,7 @@ from .discovery import lighting, inventory, norm, text_aliases
 from .named_switches import named_switch
 from homeassistant.helpers import entity_registry as er
 
-def correct(hass, text):
+def correct(hass, text, area=None):
     cleaned=norm(text)
     cleaned=re.sub(r'^(?:hey[\s,]+)?jarvis[\s,:.!?]+','',cleaned)
     prefix=''
@@ -13,6 +13,9 @@ def correct(hass, text):
     candidate=re.sub(r'\blaunch (?=spotlights?\b)', 'lounge ', cleaned)
     changes=[]
     if candidate!=cleaned:changes.append('launch spotlight -> lounge spotlight')
+    if re.search(r'\bof$', candidate):
+        candidate=re.sub(r'\bof$', 'off', candidate)
+        changes.append('trailing of -> off')
     m=re.fullmatch(r'(.+?) (?:1|one)',candidate)
     if m:
         # Do not reinterpret an actual numbered light name as a command.
@@ -27,8 +30,11 @@ def correct(hass, text):
         changes.append('trailing 1/one -> on')
     if not changes:return text,[]
     # Only known on/off lighting actions may benefit from these corrections.
-    try:step=lighting(hass,candidate) or named_switch(hass,candidate)
+    try:
+        from .planner import plan
+        from .room_context import apply_room
+        steps,preview=plan(hass,apply_room(candidate,area,hass),area)
     except ValueError:return text,[]
-    if not step or step['kind'] not in {'light','switch_light'} or step['name'] not in {'turn_on','turn_off'}:
+    if preview or not steps or any(step['kind'] not in {'light','switch_light'} or step['name'] not in {'turn_on','turn_off'} for step in steps):
         return text,[]
     return prefix+candidate,changes

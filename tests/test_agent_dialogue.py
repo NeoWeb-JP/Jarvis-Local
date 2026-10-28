@@ -67,6 +67,28 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         await self.agent.async_handle(UserInput('turn them off'))
         self.assertEqual(self.hass.services.calls[-1][0][1],'turn_off')
         self.assertEqual(set(self.hass.services.calls[-1][0][2]['entity_id']),{'light.office','light.bedroom'})
+    async def test_switch_backed_compound_followup(self):
+        self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
+        self.hass.states.values['switch.queen']=fixtures.State('switch.queen','Queen Lamp')
+        await self.agent.async_handle(UserInput('turn office and queen lamp off'))
+        self.assertEqual(len(self.hass.services.calls),2)
+        await self.agent.async_handle(UserInput('turn them back on'))
+        self.assertEqual(len(self.hass.services.calls),4)
+        self.assertEqual(self.hass.services.calls[-1][0][:2],('switch','turn_on'))
+        self.assertEqual(self.hass.services.calls[-1][0][2]['entity_id'],['switch.queen'])
+    async def test_missing_switch_followup_has_no_partial_action(self):
+        self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
+        self.hass.states.values['switch.queen']=fixtures.State('switch.queen','Queen Lamp')
+        await self.agent.async_handle(UserInput('turn office and queen lamp off'))
+        self.hass.hidden.add('switch.queen')
+        await self.agent.async_handle(UserInput('turn them back on'))
+        self.assertEqual(len(self.hass.services.calls),2)
+    async def test_failed_command_does_not_leave_stale_followup(self):
+        await self.agent.async_handle(UserInput('office on'))
+        await self.agent.async_handle(UserInput('turn office and missing light off'))
+        response=await self.agent.async_handle(UserInput('turn them back on'))
+        self.assertIn('Which lights',response.response.speech)
+        self.assertEqual(len(self.hass.services.calls),1)
     async def test_bad_compound_executes_nothing(self):
         await self.agent.async_handle(UserInput('turn office and missing light on'))
         self.assertEqual(self.hass.services.calls,[])
