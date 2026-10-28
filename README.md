@@ -51,3 +51,9 @@ Favourites run immediately when tapped; frequently used entries fill the text bo
 ### Managing voice profiles
 
 Use **Jarvis settings → Voice profiles** to edit profiles and preview morning greetings without running a routine. The speaker key should match the enrolled name in VoicePipeline; this screen does not enroll voices or change VoicePipeline's own match threshold. Saving preserves other fields in `jarvis_voice_id.json` and makes changes active immediately. The screen is administrator-only and does not display the bridge secret. Voice identification is for personalisation, never authorisation.
+
+### Briefings and named timers
+
+Choose an optional weather entity in Jarvis settings. Say “morning briefing” or “evening checks” for the available configured weather, thermostat, car cable and battery readings. These are read-only summaries; unconfigured entities are omitted and unavailable configured readings are reported. They do not include calendar events or light checks. “Good morning” still runs the separate existing routine.
+
+From a supported announcement-capable Assist satellite, say “set a pasta timer for ten minutes”, “how long is left on the pasta timer”, or “cancel the pasta timer”. There is one active timer per satellite, including named timers. Existing unnamed timers are retained on upgrade. Timers do not start from the sidebar chat.

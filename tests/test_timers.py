@@ -35,6 +35,17 @@ class TimerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('no active timer',(await self.t.handle(b,timers.parse('timer status'))).lower())
         self.assertIn('already',await self.t.handle(a,timers.parse('set a timer for five minutes')))
         await self.t.handle(a,timers.parse('cancel timer'));self.assertEqual(Store.data,{})
+    async def test_named_timer_status_cancel_and_restore(self):
+        satellite='assist_satellite.kitchen'
+        self.assertEqual(timers.parse('set a pasta timer for ten minutes')['name'],'pasta')
+        await self.t.handle(satellite,timers.parse('set a pasta timer for ten minutes'))
+        self.assertIn('pasta timer',await self.t.handle(satellite,timers.parse('how long is left on the pasta timer')))
+        self.assertIn('no rice timer', (await self.t.handle(satellite,timers.parse('cancel the rice timer'))).lower())
+        self.assertIn(satellite,self.t.items)
+        await self.t.stop();self.t=timers.Timers(self.hass);await self.t.start()
+        self.assertEqual(self.t.items[satellite]['name'],'pasta')
+        await self.t.handle(satellite,timers.parse('cancel the pasta timer'))
+        self.assertEqual(self.t.items,{})
     async def test_restore_and_announce(self):
         a='assist_satellite.kitchen';await self.t.handle(a,timers.parse('set a timer for five seconds'))
         await self.t.stop();self.t=timers.Timers(self.hass);await self.t.start();self.assertIn(a,self.t.tasks)

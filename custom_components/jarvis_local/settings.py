@@ -5,7 +5,7 @@ from homeassistant.helpers.storage import Store
 
 _LOGGER = logging.getLogger(__name__)
 KEY = 'jarvis_local.settings'
-FIELDS = {'thermostat':'climate', 'car_cable_sensor':'binary_sensor', 'car_battery_sensor':'sensor', 'guest_mode':'input_boolean', 'guest_names':'input_text', 'music_script':'script', 'personality_script':'script', 'phonetic_script':'script'}
+FIELDS = {'weather':'weather', 'thermostat':'climate', 'car_cable_sensor':'binary_sensor', 'car_battery_sensor':'sensor', 'guest_mode':'input_boolean', 'guest_names':'input_text', 'music_script':'script', 'personality_script':'script', 'phonetic_script':'script'}
 
 def _read_legacy(path):
     try:

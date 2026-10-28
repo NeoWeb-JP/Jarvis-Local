@@ -92,6 +92,15 @@ class Commands(unittest.TestCase):
         self.assertEqual(correct(self.hass,original),(original,[]))
     def test_back_on_followup(self):
         self.assertEqual(followup('turn them back on.'),('turn on __previous_lights__',False))
+    def test_briefing_configured_and_unavailable(self):
+        from jarvis_test.status import answer
+        self.hass.data={'jarvis_local':{'settings':{'weather':'weather.home','car_battery_sensor':'sensor.car'}}}
+        self.hass.states.values['weather.home']=State('weather.home','Weather','sunny')
+        self.hass.states.values['weather.home'].attributes={'temperature':15,'temperature_unit':'°C'}
+        self.hass.states.values['sensor.car']=State('sensor.car','Car','unavailable')
+        result=answer(self.hass,'morning briefing')
+        self.assertIn('sunny',result);self.assertIn('unavailable',result)
+        self.assertIn('evening checks',answer(self.hass,'evening checks'))
     def test_followup_request(self):
         self.assertIsNotNone(followup('set them to 30 percent'))
     def add_spotlight(self, entity_id, name, area):

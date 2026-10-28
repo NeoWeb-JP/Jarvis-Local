@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.22.3';
+      this.root.querySelector('.connection').textContent='v0.23.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -230,7 +230,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   async openSettings() {
     if(!this._hass)return;
     await this.loadInfo();
-    const fields=[['thermostat','Thermostat','climate'],['car_cable_sensor','Car charging cable sensor','binary_sensor'],['car_battery_sensor','Car battery sensor','sensor'],['guest_mode','Guest mode helper','input_boolean'],['guest_names','Guest names helper','input_text'],['music_script','Music control script','script'],['personality_script','Personality script','script'],['phonetic_script','Phonetic dictionary script','script']];
+    const fields=[['weather','Weather entity','weather'],['thermostat','Thermostat','climate'],['car_cable_sensor','Car charging cable sensor','binary_sensor'],['car_battery_sensor','Car battery sensor','sensor'],['guest_mode','Guest mode helper','input_boolean'],['guest_names','Guest names helper','input_text'],['music_script','Music control script','script'],['personality_script','Personality script','script'],['phonetic_script','Phonetic dictionary script','script']];
     const container=this.root.querySelector('.settings-fields');container.replaceChildren();
     for(const [key,label,domain] of fields) {
       const wrap=document.createElement('label');wrap.style.cssText='display:block;margin:12px 0';

@@ -21,6 +21,21 @@ def answer(hass, text):
         on=[s.name for s in lights if s.state == 'on']
         if not lights:return 'I could not find any lights exposed to Assist.'
         return 'These lights are on: ' + ', '.join(on) + '.' if on else 'No exposed lights report that they are on.'
+    if text in {'morning briefing','give me my morning briefing','daily briefing','evening check','evening checks','run evening checks'}:
+        morning='morning' in text or text=='daily briefing'
+        parts=['Here is your morning briefing.' if morning else 'Here are your evening checks.']
+        weather_id=get(hass,'weather')
+        if weather_id:
+            weather=state(weather_id)
+            if weather is None:parts.append('The weather reading is unavailable.')
+            else:
+                temperature=weather.attributes.get('temperature')
+                unit=weather.attributes.get('temperature_unit','degrees')
+                parts.append('The weather is '+str(weather.state)+((', '+str(temperature)+' '+str(unit)) if temperature is not None else '')+'.')
+        for key, question in [('thermostat',"what is the heating set to"),('car_cable_sensor','is the car plugged in'),('car_battery_sensor','what is the car battery level')]:
+            if get(hass,key):parts.append(answer(hass,question))
+        if len(parts)==1:parts.append('No briefing entities are configured. Choose them in Jarvis settings.')
+        return ' '.join(parts)
     if text in {"what's the heating set to", "what is the heating set to", "is the heating on", "what is the temperature", "what's the temperature"}:
         s=state(get(hass, "thermostat")) if get(hass, "thermostat") else None
         if s is None:return "The thermostat is unavailable."
