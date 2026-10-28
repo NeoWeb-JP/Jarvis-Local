@@ -219,13 +219,19 @@ class JarvisAgent(conversation.ConversationEntity):
                         replies.append('I stopped because an action failed. Earlier actions may already have run. Please check the Home Assistant log before retrying.')
                 speech = ' '.join(r for r in replies if r)
                 if outcome=='completed':
+                    light_ids=[]
+                    invalidated=False
                     for step in steps:
                         if step['kind']=='light' and not step.get('unverified'):
-                            self._recent_lights[memory_key]={'at':monotonic(),'ids':list(step['data']['entity_id'])}
+                            light_ids.extend(step['data']['entity_id'])
                         elif step['kind']=='brightness' and step['calls'] and not step.get('unverified'):
-                            self._recent_lights[memory_key]={'at':monotonic(),'ids':list(dict.fromkeys(i for call in step['calls'] for i in call['data']['entity_id']))}
-                        elif step['kind'] in {'action','switch_light','guest'}:
-                            self._recent_lights.pop(memory_key,None)
+                            light_ids.extend(i for call in step['calls'] for i in call['data']['entity_id'])
+                        elif step['kind'] in {'action','switch_light','guest'} or step.get('unverified'):
+                            invalidated=True
+                    if invalidated:
+                        self._recent_lights.pop(memory_key,None)
+                    elif light_ids:
+                        self._recent_lights[memory_key]={'at':monotonic(),'ids':list(dict.fromkeys(light_ids))}
                     while len(self._recent_lights)>64:
                         del self._recent_lights[next(iter(self._recent_lights))]
         if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):

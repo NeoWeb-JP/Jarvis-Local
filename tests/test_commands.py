@@ -62,6 +62,14 @@ class Commands(unittest.TestCase):
     def test_percentage(self):
         step=lighting(self.hass,'Set office to 30%.')
         self.assertEqual(step['calls'][0]['data']['brightness_pct'],30)
+    def test_room_status_preserves_off(self):
+        self.assertEqual(apply_room('are the lights off',self.hass.areas.entries['bedroom'],self.hass), 'are the Bedroom lights off')
+    def test_compound_two_targets_preflight(self):
+        from jarvis_test.planner import plan
+        self.hass.data={}
+        steps,preview=plan(self.hass,'turn office and bedroom lamp on')
+        self.assertEqual([step['data']['entity_id'] for step in steps],[['light.office'],['light.bedroom']])
+        with self.assertRaises(ValueError):plan(self.hass,'turn office and missing light on')
     def test_followup_request(self):
         self.assertIsNotNone(followup('set them to 30 percent'))
     def add_spotlight(self, entity_id, name, area):

@@ -61,6 +61,15 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
             self.assertIn('Jaco',named.response.speech)
             self.assertEqual(self.hass.services.calls,[])
         finally:module.bridge_profile=original
+    async def test_compound_followup_applies_to_all_targets(self):
+        await self.agent.async_handle(UserInput('turn office and bedroom lamp on'))
+        self.assertEqual(len(self.hass.services.calls),2)
+        await self.agent.async_handle(UserInput('turn them off'))
+        self.assertEqual(self.hass.services.calls[-1][0][1],'turn_off')
+        self.assertEqual(set(self.hass.services.calls[-1][0][2]['entity_id']),{'light.office','light.bedroom'})
+    async def test_bad_compound_executes_nothing(self):
+        await self.agent.async_handle(UserInput('turn office and missing light on'))
+        self.assertEqual(self.hass.services.calls,[])
     async def test_other_conversation_cannot_answer(self):
         await self.agent.async_handle(UserInput('lamp on'))
         await self.agent.async_handle(UserInput('bedroom','other'))

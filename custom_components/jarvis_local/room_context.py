@@ -96,9 +96,10 @@ def apply_room(text, area, hass=None):
         if m:action=('relative',m[1])
         m=re.fullmatch(r'(?:please )?set (?:the )?lights? to (\d+(?:\.\d+)?) (percent|%)(?: please)?',clause)
         if m:action=('brightness',m[1])
-        if re.fullmatch(r'(?:are|is) (?:the )?lights? (?:on|off)',clause):action=('status','')
+        m=re.fullmatch(r'(?:are|is) (?:the )?lights? (on|off)',clause)
+        if m:action=('status',m[1])
         if action is None:continue
         if area is None:raise ValueError('Which room? Assign this Muse to an area, select a chat room, or name the room in your command. Nothing was run.')
         kind,value=action
-        clauses[index]={'toggle':f'turn {value} the {area.name} lights','relative':f'{value} the {area.name} lights','brightness':f'set the {area.name} lights to {value} percent','status':f'are the {area.name} lights on'}[kind]
+        clauses[index]={'toggle':f'turn {value} the {area.name} lights','relative':f'{value} the {area.name} lights','brightness':f'set the {area.name} lights to {value} percent','status':f'are the {area.name} lights {value}'}[kind]
     return prefix+''.join(clauses)
