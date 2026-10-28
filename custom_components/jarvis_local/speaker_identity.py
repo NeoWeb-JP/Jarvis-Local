@@ -57,7 +57,12 @@ def bridge_profile(text, profiles):
         return None
     profile = profiles.get(speaker.casefold())
     if not isinstance(profile, dict):
-        return None
+        matches = [item for item in profiles.values() if isinstance(item, dict)
+                   and isinstance(item.get('name'), str)
+                   and item['name'].casefold() == speaker.casefold()]
+        if len(matches) != 1:
+            return None
+        profile = matches[0]
     threshold = profile.get('min_confidence', 0.75)
     name = profile.get('name')
     if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or not 0 <= threshold <= 1:

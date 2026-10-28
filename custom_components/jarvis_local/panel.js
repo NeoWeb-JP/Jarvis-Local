@@ -9,7 +9,7 @@ class JarvisLocalPanel extends HTMLElement {
     if (this.root) {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
-      this.root.querySelector('.connection').textContent='Agent: '+id+' | '+(state && state.state!=='unavailable' ? 'Available' : 'Not available')+' | v0.18.1';
+      this.root.querySelector('.connection').textContent='Agent: '+id+' | '+(state && state.state!=='unavailable' ? 'Available' : 'Not available')+' | v0.19.0';
     }
   }
   getCardSize() { return 7; }

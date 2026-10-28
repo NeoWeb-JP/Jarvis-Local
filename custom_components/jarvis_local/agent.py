@@ -6,6 +6,7 @@ from time import perf_counter, monotonic
 from uuid import uuid4
 from .settings import get
 from .speaker_identity import unwrap, bridge_profile
+from .morning import morning_reply
 from .timers import parse as parse_timer
 from .followup import followup
 from .clarification import request as clarification_request, resolve as clarification_resolve
@@ -203,11 +204,8 @@ class JarvisAgent(conversation.ConversationEntity):
                                 return_response=True, context=user_input.context)
                             if (reply or {}).get('response'):
                                 routine_reply=reply['response']
-                                if step['name']=='jarvis_local_good_morning' and isinstance(routine_reply,str) and len(routine_reply.split())<9:
-                                    routine_reply=await confirmation(self.hass,user_input.context,routine_reply,action='morning')
-                                if step['name']=='jarvis_local_good_morning' and voice_profile and isinstance(routine_reply,str):
-                                    routine_reply=re.sub(r'^good morning[,.! ]*', '', routine_reply, count=1, flags=re.I)
-                                    routine_reply='Good morning, '+voice_profile+'.'+(' '+routine_reply if routine_reply else '')
+                                if step['name']=='jarvis_local_good_morning':
+                                    routine_reply=morning_reply(voice_profile, cfg.get('profiles', {}))
                                 replies.append(routine_reply)
                     except (HomeAssistantError, ValueError) as err:
                         outcome='failed'
