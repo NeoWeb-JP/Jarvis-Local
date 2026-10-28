@@ -1,0 +1,38 @@
+name: VoicePipeline candidate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  voicepipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install test dependency
+        run: python -m pip install 'numpy>=1.24,<3'
+      - name: Test History correction and deployment safeguards
+        run: python -m unittest discover -s deployment/voice-bridge/experiments/history-correction -v
+      - name: Test speaker threshold selection
+        run: python -m unittest discover -s deployment/voice-bridge/experiments/per-speaker-threshold -v
+      - name: Test History controls
+        run: node deployment/voice-bridge/experiments/history-correction/test_ui.js
+      - name: Check application syntax
+        run: |
+          python -m py_compile deployment/voice-bridge/experiments/history-correction/api.py
+          node --check deployment/voice-bridge/experiments/history-correction/ui.js
+          sh -n deployment/voice-bridge/experiments/history-correction/install-isolated.sh
+          sh -n deployment/voice-bridge/experiments/history-correction/prepare-production.sh
+          sh -n deployment/voice-bridge/experiments/history-correction/deploy-production.sh
+          sh -n deployment/voice-bridge/experiments/history-correction/rollback-production.sh
