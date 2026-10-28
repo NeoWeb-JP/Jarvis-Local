@@ -9,6 +9,8 @@ const elements={'.speak':{textContent:'',setAttribute(){}},'.voice-status':{text
 panel.root={querySelector:s=>elements[s]};panel.config={agent_id:'conversation.jarvis_local'};
 const packets=[];panel._hass={connection:{socket:{send:p=>packets.push([...p])}},hassUrl:s=>s};
 const lines=[];panel.line=(who,text)=>lines.push([who,text]);const tracked=[];panel.trackCommand=text=>tracked.push(text);panel.loadInfo=()=>{};
+const overview={'.voice-pipeline':{value:'bridge'},'.overview-pipeline':{},'.overview-stt':{}};
+const originalRoot=panel.root;panel.root={querySelector:k=>overview[k]};panel.voicePipelines=[{id:'bridge',name:'Jarvis',stt_engine:'stt.jarvis_voice_bridge_test'}];panel.updateOverview();assert.equal(overview['.overview-stt'].textContent,'Speech-to-text: Jarvis Voice Bridge (configured)');panel.root=originalRoot;
 const session={handler:null,ready:false,recording:true,ended:false,context:{state:'closed'},buffer:[new Int16Array([123])],unsub:()=>{session.unsubscribed=true}};
 panel.voiceSession=session;panel.busy=true;
 panel.voiceEvent(session,{type:'run-start',data:{runner_data:{stt_binary_handler_id:4}}});

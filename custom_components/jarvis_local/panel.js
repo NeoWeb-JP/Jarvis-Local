@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.22.0';
+      this.root.querySelector('.connection').textContent='v0.22.1';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -79,7 +79,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const select=this.root.querySelector('.voice-pipeline');
     const pipeline=(this.voicePipelines || []).find(p=>p.id===select?.value);
     this.root.querySelector('.overview-pipeline').textContent='Voice assistant: '+(pipeline?.name || 'not selected');
-    this.root.querySelector('.overview-stt').textContent='Speech-to-text: '+(pipeline?.stt_engine || 'not selected')+' (configured)';
+    const engine=pipeline?.stt_engine;
+    const friendly=engine==='stt.jarvis_voice_bridge_test'?'Jarvis Voice Bridge':this._hass?.states?.[engine]?.attributes?.friendly_name;
+    this.root.querySelector('.overview-stt').textContent=engine?'Speech-to-text: '+(friendly || engine.replace(/^stt\./,'').replace(/_/g,' '))+' (configured)':'Speech-to-text: not selected';
   }
   async toggleVoice() {
     if(this.voiceSession) {if(this.voiceSession.recording)this.stopVoice(false);return;}
