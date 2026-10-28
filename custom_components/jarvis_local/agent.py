@@ -136,6 +136,8 @@ class JarvisAgent(conversation.ConversationEntity):
             else:
                 outcome='completed'
                 replies = []
+                grouped_lighting=(len(steps)>1 and all(s.get('kind') in {'light','switch_light'} for s in steps) and len({s.get('name') for s in steps})==1)
+                lighting_succeeded=False
                 async with self._lock:
                     try:
                         for step in steps:
@@ -163,7 +165,8 @@ class JarvisAgent(conversation.ConversationEntity):
                                 if unverified:
                                     replies.append('I sent the request, but Home Assistant has not confirmed the change.')
                                     continue
-                                replies.append(await confirmation(self.hass,user_input.context,'Turning '+('off' if step['name']=='turn_off' else 'on')+' '+step.get('target_label', 'the light')+'.',action='off' if step['name']=='turn_off' else 'on'))
+                                if grouped_lighting:lighting_succeeded=True
+                                else:replies.append(await confirmation(self.hass,user_input.context,'Turning '+('off' if step['name']=='turn_off' else 'on')+' '+step.get('target_label', 'the light')+'.',action='off' if step['name']=='turn_off' else 'on'))
                                 continue
                             if step['kind'] == 'light':
                                 await self.hass.services.async_call('light', step['name'], step['data'], blocking=True, context=user_input.context)
@@ -172,7 +175,8 @@ class JarvisAgent(conversation.ConversationEntity):
                                 if unverified:
                                     replies.append('I sent the command, but Home Assistant has not confirmed: '+', '.join(unverified)+'.')
                                     continue
-                                replies.append(await confirmation(self.hass,user_input.context,'Turning '+('off' if step['name']=='turn_off' else 'on')+' '+step.get('target_label','the lights')+'.',action='off' if step['name']=='turn_off' else 'on'))
+                                if grouped_lighting:lighting_succeeded=True
+                                else:replies.append(await confirmation(self.hass,user_input.context,'Turning '+('off' if step['name']=='turn_off' else 'on')+' '+step.get('target_label','the lights')+'.',action='off' if step['name']=='turn_off' else 'on'))
                                 continue
                             if step['kind'] == 'guest':
                                 data=step['data']; operation=data['operation']
@@ -215,6 +219,9 @@ class JarvisAgent(conversation.ConversationEntity):
                         failure=str(err)
                         _LOGGER.exception('Jarvis routine failed')
                         replies.append('I stopped because an action failed. Earlier actions may already have run. Please check the Home Assistant log before retrying.')
+                if grouped_lighting and lighting_succeeded and outcome=='completed':
+                    action='off' if steps[0]['name']=='turn_off' else 'on'
+                    replies.insert(0,await confirmation(self.hass,user_input.context,'Turning '+action+' the lights.',action=action))
                 speech = ' '.join(r for r in replies if r)
                 if outcome=='completed':
                     light_ids=[]

@@ -76,6 +76,15 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.hass.services.calls),4)
         self.assertEqual(self.hass.services.calls[-1][0][:2],('switch','turn_on'))
         self.assertEqual(self.hass.services.calls[-1][0][2]['entity_id'],['switch.queen'])
+    async def test_combined_response_once_and_again_followup(self):
+        self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
+        self.hass.states.values['switch.queen']=fixtures.State('switch.queen','Queen Lamp')
+        first=await self.agent.async_handle(UserInput('office and queen lamp off'))
+        self.assertEqual(first.response.speech,'Turning off the lights.')
+        await self.agent.async_handle(UserInput('turn them back on'))
+        final=await self.agent.async_handle(UserInput('turn them off again'))
+        self.assertEqual(len(self.hass.services.calls),6)
+        self.assertEqual(final.response.speech,'Turning off the lights.')
     async def test_missing_switch_followup_has_no_partial_action(self):
         self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
         self.hass.states.values['switch.queen']=fixtures.State('switch.queen','Queen Lamp')

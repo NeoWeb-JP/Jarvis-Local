@@ -12,7 +12,11 @@ def correct(hass, text, area=None):
         if cleaned.startswith(p):prefix=p;cleaned=cleaned[len(p):];break
     candidate=re.sub(r'\blaunch (?=spotlights?\b)', 'lounge ', cleaned)
     changes=[]
-    if candidate!=cleaned:changes.append('launch spotlight -> lounge spotlight')
+    comma_free=re.sub(r'(?<=\w),\s*(?=\w)', ' ', candidate)
+    if comma_free != candidate:
+        candidate=comma_free
+        changes.append('removed punctuation between words')
+    if re.sub(r'(?<=\w),\s*(?=\w)', ' ', cleaned)!=candidate:changes.append('launch spotlight -> lounge spotlight')
     if re.search(r'\bof$', candidate):
         candidate=re.sub(r'\bof$', 'off', candidate)
         changes.append('trailing of -> off')

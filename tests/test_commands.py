@@ -70,6 +70,17 @@ class Commands(unittest.TestCase):
         steps,preview=plan(self.hass,'turn office and bedroom lamp on')
         self.assertEqual([step['data']['entity_id'] for step in steps],[['light.office'],['light.bedroom']])
         with self.assertRaises(ValueError):plan(self.hass,'turn office and missing light on')
+    def test_voice_comma_correction_validates_every_target(self):
+        from jarvis_test.transcript import correct
+        self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
+        self.hass.states.values['switch.queen']=State('switch.queen','Queen Lamp')
+        corrected,changes=correct(self.hass,'Queen, lamp and office off.')
+        self.assertEqual(corrected,'queen lamp and office off')
+        self.assertIn('removed punctuation between words',changes)
+        original='Queen, lamp and missing off.'
+        self.assertEqual(correct(self.hass,original),(original,[]))
+    def test_followup_again(self):
+        self.assertEqual(followup('turn them off again.'),('turn off __previous_lights__',False))
     def test_voice_of_correction_requires_both_targets(self):
         from jarvis_test.transcript import correct
         self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}

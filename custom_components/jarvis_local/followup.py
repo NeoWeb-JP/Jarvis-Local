@@ -8,7 +8,7 @@ def followup(text):
     preview=False
     for prefix in ['preview ','dry run ','what would you do if i said ']:
         if text.startswith(prefix):preview=True;text=text[len(prefix):];break
-    m=re.fullmatch(r'(?:please )?(?:turn|switch) (?:them|it) (?:back )?(on|off)(?: please)?',text)
+    m=re.fullmatch(r'(?:please )?(?:turn|switch) (?:them|it) (?:back )?(on|off)(?: again)?(?: please)?',text)
     if m:return 'turn '+m[1]+' __previous_lights__',preview
     m=re.fullmatch(r'(?:please )?(?:turn|switch) (on|off) (?:them|it)(?: please)?',text)
     if m:return 'turn '+m[1]+' __previous_lights__',preview
