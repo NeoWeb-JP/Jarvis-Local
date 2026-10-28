@@ -206,7 +206,7 @@ class JarvisAgent(conversation.ConversationEntity):
                             if (reply or {}).get('response'):
                                 routine_reply=reply['response']
                                 if step['name']=='jarvis_local_good_morning':
-                                    routine_reply=morning_reply(voice_profile, cfg.get('profiles', {}))
+                                    routine_reply=morning_reply(voice_profile, cfg.get('profiles', {}), self.hass.data.setdefault('jarvis_local', {}).setdefault('morning_history', {}))
                                 replies.append(routine_reply)
                     except (HomeAssistantError, ValueError) as err:
                         outcome='failed'

@@ -47,3 +47,7 @@ The morning routine still runs its configured actions. Jarvis selects its spoken
 The sidebar shows the chosen voice assistant and speech-to-text engine as configured, not as a connectivity or health check. Voice requests marked as locally processed may have been handled by a Home Assistant sentence trigger; use the Assist debug trace to investigate. Requests intercepted before Jarvis are not present in Jarvis's own diagnostics. Diagnostics show recent text, actions and responses in memory for administrators and can be cleared; they do not include audio. Speaker status indicates whether a personalised profile was used, not whether the underlying speech service found a candidate.
 
 Favourites run immediately when tapped; frequently used entries fill the text box for review. Preview remains available for checking commands before execution. Favourites are stored on the current browser/device.
+
+### Managing voice profiles
+
+Use **Jarvis settings → Voice profiles** to edit profiles and preview morning greetings without running a routine. The speaker key should match the enrolled name in VoicePipeline; this screen does not enroll voices or change VoicePipeline's own match threshold. Saving preserves other fields in `jarvis_voice_id.json` and makes changes active immediately. The screen is administrator-only and does not display the bridge secret. Voice identification is for personalisation, never authorisation.

@@ -11,3 +11,9 @@ class MorningTests(unittest.TestCase):
     def test_generic_fallback_and_format_safety(self):
         self.assertIn('Jaco',morning_reply('Jaco',{}))
         self.assertEqual(morning_reply('Jaco',{'jaco':{'name':'Jaco','morning_responses':['Hi {name} {other}']}}),'Hi Jaco {other}')
+
+    def test_avoids_repeating_last_response(self):
+        profiles={'jaco': {'name':'Jaco','morning_responses':['one','two']}}
+        history={}
+        first=morning_reply('Jaco',profiles,history)
+        self.assertNotEqual(first,morning_reply('Jaco',profiles,history))
