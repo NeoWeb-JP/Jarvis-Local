@@ -5,6 +5,7 @@ import probatio as vol
 from .voice_profiles import public_profiles, validate_profiles, save_profiles_file
 from homeassistant.components import websocket_api, conversation
 from homeassistant.core import callback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers import area_registry as ar
 from .settings import save
 
@@ -13,7 +14,7 @@ from .settings import save
 @callback
 def info(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
-    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]),'version':'0.21.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
+    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.21.1','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/clear_diagnostics'})
@@ -62,5 +63,16 @@ async def save_voice_profiles(hass,connection,msg):
         connection.send_error(msg['id'],'invalid_profiles',str(err));return
     connection.send_result(msg['id'],{'profiles':public_profiles(config)})
 
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/set_debug',vol.Required('enabled'):bool})
+@websocket_api.async_response
+async def set_debug(hass,connection,msg):
+    enabled=msg['enabled']
+    await Store(hass,1,'jarvis_local.debug').async_save({'enabled':enabled})
+    data=hass.data.setdefault('jarvis_local',{})
+    data['debug_enabled']=enabled
+    if not enabled:data['diagnostics']=[]
+    connection.send_result(msg['id'],{'enabled':enabled})
+
 def register(hass):
-    for handler in [info,clear,process,save_settings,save_voice_profiles]:websocket_api.async_register_command(hass,handler)
+    for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug]:websocket_api.async_register_command(hass,handler)

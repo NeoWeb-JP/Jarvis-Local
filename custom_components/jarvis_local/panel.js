@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.21.0';
+      this.root.querySelector('.connection').textContent='v0.21.1';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -30,7 +30,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 <form><input aria-label="Message to Jarvis" placeholder="Ask Jarvis anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Jarvis">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Jarvis reply</button>
 <details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant whose conversation agent is Jarvis Local. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
 <details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a favourite to run it. Frequent commands fill the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
-<details><summary>Tools and diagnostics</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button><button type="button" class="test-suite">Preview checks</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Recent voice and chat requests</summary><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><div class="diagnostic-cards"></div><details><summary>Raw diagnostics</summary><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></details></details></ha-card>`;
+<details><summary>Tools</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Troubleshooting</summary><label><input type="checkbox" class="debug-toggle"> Enable debug and troubleshooting</label><small>Off by default. When enabled, recent request details are held temporarily in memory and routing messages are shown in chat. Disabling clears them.</small><div class="debug-content" hidden><button type="button" class="test-suite">Preview checks</button><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><div class="diagnostic-cards"></div><details><summary>Raw diagnostics</summary><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></div></details></details></ha-card>`;
     this.root.querySelector('.menu').onclick = () => this.dispatchEvent(new Event('hass-toggle-menu', {bubbles:true, composed:true}));
     this.root.querySelector('.open-settings').onclick=()=>this.openSettings();
     this.root.querySelector('.close-settings').onclick=()=>this.showSettings(false);
@@ -39,6 +39,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
     this.root.querySelector('.test-suite').onclick=()=>this.previewChecks();
+    this.root.querySelector('.debug-toggle').onchange=e=>this.setDebug(e.target.checked);
     this.root.querySelector('.favourite-current').onclick=()=>this.addFavourite();
     this.root.querySelector('.clear-frequent').onclick=()=>{this.commandHistory=[];this.saveQuick();this.renderQuick();};
     this.readQuick();this.renderQuick();
@@ -132,7 +133,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       const reply=event.data.intent_output;this.conversationId=reply.conversation_id;
       if(event.data.processed_locally===false && reply.response?.speech?.plain?.extra_data?.jarvis_local?.trackable===true && session.transcript)this.trackCommand(session.transcript);
       this.line('Jarvis',reply.response?.speech?.plain?.speech || 'No text response.');
-      if(event.data.processed_locally===true)this.line('Routing','Home Assistant processed this request locally. It may have matched a sentence trigger before Jarvis. Check the Assist debug trace.');
+      if(this.debugEnabled && event.data.processed_locally===true)this.line('Routing','Home Assistant processed this request locally. It may have matched a sentence trigger before Jarvis. Check the Assist debug trace.');
     } else if(event.type==='tts-end') {
       const url=event.data.tts_output?.url;
       if(url){if(this.replyAudio)this.replyAudio.pause();this.replyAudio=new Audio(this._hass.hassUrl ? this._hass.hassUrl(url) : url);this.root.querySelector('.replay-voice').hidden=false;this.replyAudio.play().catch(()=>this.voiceStatus('Tap Play Jarvis reply to hear the response.'));}
@@ -309,12 +310,21 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       select.replaceChildren(new Option('No room selected',''));
       for(const area of data.areas) select.add(new Option(area.name,area.id));
       select.value=selected;
+      this.debugEnabled=data.debug_enabled===true;
+      this.root.querySelector('.debug-toggle').checked=this.debugEnabled;
+      this.root.querySelector('.debug-content').hidden=!this.debugEnabled;
       this.root.querySelector('.diagnostics').textContent=JSON.stringify(data.diagnostics,null,2);
       this.renderDiagnostics(data.diagnostics || []);
       this.settings=data.settings || {};this.voiceProfiles=data.voice_profiles || {};
       this.infoLoaded=true;
     } catch(e) {this.root.querySelector('.diagnostics').textContent=e.message || String(e);}
     finally {this.loadingInfo=false;}
+  }
+  async setDebug(enabled) {
+    const toggle=this.root.querySelector('.debug-toggle');toggle.disabled=true;
+    try {const result=await this._hass.callWS({type:'jarvis_local/set_debug',enabled});this.debugEnabled=result.enabled===true;this.root.querySelector('.debug-content').hidden=!this.debugEnabled;if(!this.debugEnabled){this.root.querySelector('.diagnostics').textContent='[]';this.renderDiagnostics([]);for(const item of this.root.querySelectorAll('.routing-message'))item.remove();}await this.loadInfo();}
+    catch(e){toggle.checked=!!this.debugEnabled;this.voiceStatus('Could not change troubleshooting: '+(e.message || String(e)));}
+    finally{toggle.disabled=false;}
   }
   renderDiagnostics(records) {
     const container=this.root.querySelector('.diagnostic-cards');container.replaceChildren();
@@ -326,7 +336,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     }
   }
   line(who, text) {
-    const el=document.createElement('div');el.className='line'+(who==='You'?' user':'');
+    const el=document.createElement('div');el.className='line'+(who==='You'?' user':who==='Routing'?' routing-message':'');
     const label=document.createElement('span');label.textContent=who+': '+text;el.append(label);
     if(who==='You'){
       const actions=document.createElement('div');actions.className='message-actions';

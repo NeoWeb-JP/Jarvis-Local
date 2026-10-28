@@ -16,6 +16,10 @@ async def async_setup_entry(hass, entry):
     data = hass.data.setdefault(DOMAIN, {})
     from .settings import load
     data["settings"] = await load(hass)
+    from homeassistant.helpers.storage import Store
+    debug_settings = await Store(hass, 1, "jarvis_local.debug").async_load()
+    data["debug_enabled"] = isinstance(debug_settings, dict) and debug_settings.get("enabled") is True
+    data["diagnostics"] = []
     import json
     def load_voice_config():
         path=Path(hass.config.path('jarvis_voice_id.json'))
@@ -45,7 +49,7 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
             sidebar_title="Jarvis Local", sidebar_icon="mdi:robot",
-            module_url="/jarvis_local/panel.js?v=0.21.0",
+            module_url="/jarvis_local/panel.js?v=0.21.1",
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
         await data["timers"].stop()

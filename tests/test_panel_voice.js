@@ -20,7 +20,9 @@ panel.voiceEvent(session,{type:'intent-end',data:{intent_output:{conversation_id
 assert.deepStrictEqual(tracked,[]);
 assert.equal(panel.conversationId,'abc');assert.deepStrictEqual(lines,[['You','lamp on'],['Jarvis','Done']]);
 panel.voiceEvent(session,{type:'intent-end',data:{processed_locally:true,intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done'}}}}}});
-assert.deepStrictEqual(tracked,[]);
+assert.deepStrictEqual(tracked,[]);assert.equal(lines.some(line=>line[0]==='Routing'),false);
+panel.debugEnabled=true;
+panel.voiceEvent(session,{type:'intent-end',data:{processed_locally:true,intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done'}}}}}});
 panel.voiceEvent(session,{type:'intent-end',data:{processed_locally:false,intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done',extra_data:{jarvis_local:{trackable:true}}}}}}}});
 assert.deepStrictEqual(tracked,['lamp on']);
 assert.equal(lines.at(-2)[0],'Routing');assert.match(lines.at(-2)[1],/may have matched/);

@@ -45,6 +45,12 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(completed.response.extra_data['jarvis_local']['trackable'])
         preview=await self.agent.async_handle(UserInput('preview turn bedroom light on'))
         self.assertFalse(preview.response.extra_data['jarvis_local']['trackable'])
+    async def test_debug_history_disabled_by_default(self):
+        await self.agent.async_handle(UserInput('lamp on'))
+        self.assertFalse(self.hass.data['jarvis_local'].get('diagnostics'))
+        self.hass.data['jarvis_local']['debug_enabled']=True
+        await self.agent.async_handle(UserInput('cancel'))
+        self.assertEqual(len(self.hass.data['jarvis_local']['diagnostics']),1)
     async def test_other_conversation_cannot_answer(self):
         await self.agent.async_handle(UserInput('lamp on'))
         await self.agent.async_handle(UserInput('bedroom','other'))
