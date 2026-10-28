@@ -51,6 +51,16 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         self.hass.data['jarvis_local']['debug_enabled']=True
         await self.agent.async_handle(UserInput('cancel'))
         self.assertEqual(len(self.hass.data['jarvis_local']['diagnostics']),1)
+    async def test_social_reply_unknown_and_matched(self):
+        neutral=await self.agent.async_handle(UserInput('thank you'))
+        self.assertNotIn('Jaco',neutral.response.speech)
+        original=module.bridge_profile
+        try:
+            module.bridge_profile=lambda text,profiles:'Jaco'
+            named=await self.agent.async_handle(UserInput('hello'))
+            self.assertIn('Jaco',named.response.speech)
+            self.assertEqual(self.hass.services.calls,[])
+        finally:module.bridge_profile=original
     async def test_other_conversation_cannot_answer(self):
         await self.agent.async_handle(UserInput('lamp on'))
         await self.agent.async_handle(UserInput('bedroom','other'))

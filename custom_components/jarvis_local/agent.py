@@ -7,6 +7,7 @@ from uuid import uuid4
 from .settings import get
 from .speaker_identity import unwrap, bridge_profile
 from .morning import morning_reply
+from .social import social_reply
 from .timers import parse as parse_timer
 from .followup import followup
 from .clarification import request as clarification_request, resolve as clarification_resolve
@@ -76,7 +77,10 @@ class JarvisAgent(conversation.ConversationEntity):
             timer_request=parse_timer(command_text)
             pending=self._pending_clarifications.get(memory_key)
             resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
-            if timer_request is not None:
+            social = social_reply(command_text, voice_profile, self.hass.data.setdefault('jarvis_local',{}).setdefault('social_history',{})) if not pending else None
+            if social is not None:
+                steps=[{'kind':'text','response':social,'label':'answer greeting'}]
+            elif timer_request is not None:
                 self._pending_clarifications.pop(memory_key,None)
                 steps=[{'kind':'timer','data':timer_request,'label':'handle timer'}]
             elif pending and resolution == 'cancel':
