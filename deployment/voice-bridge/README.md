@@ -8,6 +8,12 @@ On the VoicePipeline host, run `sh check.sh voicepipeline`. Record the image ide
 
 The supplied Wyoming patch is based on the upstream `wyoming_server.py` SHA-256 `973fa024b093aa3623fe97c6ec48eb2b7feba8f65f01f6fc7ffa0e372b94ba2d`. The supplied speaker patch is the experimental cache implementation; it has not been validated across different image versions. These files are version-locked source overlays, not a universal upgrade mechanism. Do not install either on a different image without comparing the underlying source, including existing local changes. The installed threshold correction (`row[0]`) must be retained; check before deployment.
 
+## Prepare a reviewable candidate
+
+`sh stage-overrides.sh voicepipeline /path/to/new-staging-directory` checks the running container image ID and both active source hashes against the verified candidate, then copies the patches and writes a Compose override in a **new** directory. It does not start, stop or change the live container. Existing folders are never overwritten. A changed image or source is rejected, including when the source might otherwise be compatible.
+
+The generated override is for review only: Compose volume merging and an image update can change what will actually run. Do not apply it alongside the old source-mount overrides. Before any cutover, back up the Compose files and data, examine `docker compose config`, verify that its resolved image is still the pinned image ID and that the existing `/data` and `/models` mounts are intact, and test on an isolated instance. The check does not prevent a future image tag being repointed between verification and deployment.
+
 ## Home Assistant bridge
 
 The included integration retains the existing `jarvis_voice_bridge` domain and unique IDs. Its STT entity's friendly name has been changed, but existing registry names and IDs may remain unchanged. It is not installed by Jarvis Local's HACS update. To trial it, first back up `/config/custom_components/jarvis_voice_bridge` and Home Assistant configuration, then copy the candidate directory into an isolated Home Assistant test instance. Restart and test STT with the diagnostic conversation entity, followed by Jarvis Local. Do not configure two live bridges against copied production enrollment data without understanding that both process audio.
