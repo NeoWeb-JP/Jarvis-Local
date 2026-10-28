@@ -37,3 +37,31 @@ def unwrap(text, secret, profiles, seen, now=None):
         if confidence<threshold or not isinstance(name,str) or not re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ '-]{0,39}",name):return transcript,None
         return transcript,name
     except (ValueError,TypeError,KeyError,UnicodeDecodeError):return '',None
+
+
+def bridge_profile(text, profiles):
+    """Use bridge metadata only for optional response personalisation."""
+    try:
+        from custom_components.jarvis_voice_bridge.models import SpeakerTranscript
+    except ImportError:
+        return None
+    if not isinstance(text, SpeakerTranscript):
+        return None
+    value = getattr(text, 'jarvis_speaker', None)
+    if not isinstance(value, tuple) or len(value) != 3:
+        return None
+    _, speaker, confidence = value
+    if not isinstance(speaker, str) or not isinstance(profiles, dict):
+        return None
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not math.isfinite(confidence) or not 0 <= confidence <= 1:
+        return None
+    profile = profiles.get(speaker.casefold())
+    if not isinstance(profile, dict):
+        return None
+    threshold = profile.get('min_confidence', 0.75)
+    name = profile.get('name')
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or not 0 <= threshold <= 1:
+        return None
+    if confidence < threshold or not isinstance(name, str) or not re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ '-]{0,39}", name):
+        return None
+    return name

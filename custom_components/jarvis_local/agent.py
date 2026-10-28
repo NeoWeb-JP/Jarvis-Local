@@ -5,7 +5,7 @@ import re
 from time import perf_counter, monotonic
 from uuid import uuid4
 from .settings import get
-from .speaker_identity import unwrap
+from .speaker_identity import unwrap, bridge_profile
 from .timers import parse as parse_timer
 from .followup import followup
 from .clarification import request as clarification_request, resolve as clarification_resolve
@@ -61,7 +61,8 @@ class JarvisAgent(conversation.ConversationEntity):
         followup_used=False
         corrections=[]
         command_text=user_input.text
-        voice_profile=None
+        cfg=self.hass.data.get('jarvis_local',{}).get('voice_id_config',{})
+        voice_profile=bridge_profile(command_text,cfg.get('profiles',{}))
         if command_text.startswith('JVS1.'):
             cfg=self.hass.data.get('jarvis_local',{}).get('voice_id_config',{})
             command_text,voice_profile=unwrap(command_text,cfg.get('secret'),cfg.get('profiles',{}),self._voice_markers)
@@ -205,7 +206,8 @@ class JarvisAgent(conversation.ConversationEntity):
                                 if step['name']=='jarvis_local_good_morning' and isinstance(routine_reply,str) and len(routine_reply.split())<9:
                                     routine_reply=await confirmation(self.hass,user_input.context,routine_reply,action='morning')
                                 if step['name']=='jarvis_local_good_morning' and voice_profile and isinstance(routine_reply,str):
-                                    routine_reply='Good morning, '+voice_profile+'. '+routine_reply
+                                    routine_reply=re.sub(r'^good morning[,.! ]*', '', routine_reply, count=1, flags=re.I)
+                                    routine_reply='Good morning, '+voice_profile+'.'+(' '+routine_reply if routine_reply else '')
                                 replies.append(routine_reply)
                     except (HomeAssistantError, ValueError) as err:
                         outcome='failed'

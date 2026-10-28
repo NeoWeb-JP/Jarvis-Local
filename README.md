@@ -29,3 +29,9 @@ Back up before updating. Install an offered update in HACS or Home Assistant, re
 Do not commit Home Assistant backups, secrets, access tokens, logs, or personal configuration.
 
 For a release, verify changes, run the checks, increment the version in `manifest.json`, publish a GitHub release with a matching version tag and release notes, then test the offered HACS update on Home Assistant. GitHub Actions are supplied but must pass on the actual repository; they are not a substitute for live testing.
+
+## Speaking and optional speaker identification
+
+The Speak button opens Home Assistant Assist. In the Companion app it opens native Assist with the microphone; in a browser it opens the dashboard's Assist dialog, and you can use Back to return. Select an Assist pipeline using the Jarvis Local conversation agent and your preferred speech-to-text and text-to-speech engines. Voice conversations appear in Assist rather than the Jarvis sidebar history. Microphone permission and a supported secure connection may be required.
+
+The experimental Jarvis Voice Bridge can pass a speaker match to Jarvis for a personalised good-morning response. Configure the bridge as the speech-to-text engine and Jarvis Local as the conversation agent in the same pipeline. Keep the bridge and its VoicePipeline server patch installed. In `/config/jarvis_voice_id.json`, define `profiles` using the exact enrolled speaker names in lower case, with a display `name` and `min_confidence` between 0 and 1. Restart Home Assistant after editing. This file stays local and must not be committed. If no profile matches or the score is too low, Jarvis replies without a name. Speaker matches are approximate and must never be used to grant access or authorise sensitive actions.
