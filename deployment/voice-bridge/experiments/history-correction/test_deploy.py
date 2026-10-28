@@ -81,6 +81,7 @@ elif cmd=='compose':
 elif cmd=='image':
  if '--format' in args: print(image)
  else: print(json.dumps([{'Id':image,'Config':{'Env':['PATH=/bin']}}]))
+elif cmd=='diff': print('C /app\nA /app/__pycache__')
 else: raise SystemExit('unexpected docker command '+cmd)
 '''
 FAKE_CURL = r'''#!/usr/bin/env python3
@@ -95,8 +96,8 @@ shutil.copyfile(Path(os.environ['FAKE_CANDIDATE'])/url.rsplit('/',1)[1],out)
 
 class DeployTests(unittest.TestCase):
     def test_deploy_rollback_and_drift_guard(self):
-        for failure, drift in ((False,False),(True,False),(False,True)):
-            with self.subTest(failure=failure, drift=drift), tempfile.TemporaryDirectory() as directory:
+        for failure, drift, layer_drift in ((False,False,False),(True,False,False),(False,True,False),(False,False,True)):
+            with self.subTest(failure=failure, drift=drift, layer_drift=layer_drift), tempfile.TemporaryDirectory() as directory:
                 root=Path(directory); live=root/'live'; stage=live/'history-correction-stage.fixture'
                 for folder in (live, live/'data',live/'models',stage,root/'bin'): folder.mkdir(parents=True,exist_ok=True)
                 (root/'state').write_text('old')
@@ -107,6 +108,7 @@ class DeployTests(unittest.TestCase):
                     p=stage/name; p.write_bytes((HERE/name).read_bytes()); sources.append(p)
                 p=stage/'compose.history-correction.yaml'; p.write_text('fixture'); sources.append(p)
                 (stage/'source-checksums.txt').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p}\n' for p in sources))
+                (stage/'reviewed-container-diff.txt').write_text('changed\n' if layer_drift else 'A /app/__pycache__\nC /app\n')
                 if drift: (live/'compose.yaml').write_text('changed')
                 with sqlite3.connect(root/'snapshot.db') as db:
                     db.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)')
@@ -117,13 +119,13 @@ class DeployTests(unittest.TestCase):
                 path=root/'deploy.sh'; path.write_text(script)
                 env=dict(os.environ, FAKE_ROOT=str(root), FAKE_STAGE=str(stage), FAKE_CANDIDATE=str(HERE), FAKE_FIXTURES=str(FIXTURES), FAKE_FAIL='1' if failure else '0', PATH=str(root/'bin')+os.pathsep+os.environ['PATH'])
                 result=subprocess.run(['sh',str(path),str(stage)],env=env,capture_output=True,text=True)
-                self.assertEqual(result.returncode==0,not failure and not drift,result.stdout+result.stderr)
+                self.assertEqual(result.returncode==0,not failure and not drift and not layer_drift,result.stdout+result.stderr)
                 self.assertNotIn('DO_NOT_EXPOSE',result.stdout+result.stderr)
                 calls=(root/'calls').read_text().splitlines()
-                self.assertEqual('up-new' in calls, not drift)
+                self.assertEqual('up-new' in calls, not drift and not layer_drift)
                 self.assertEqual('up-old' in calls, failure)
-                self.assertEqual((root/'state').read_text(), 'new' if not failure and not drift else 'old')
-                if not drift:
+                self.assertEqual((root/'state').read_text(), 'new' if not failure and not drift and not layer_drift else 'old')
+                if not drift and not layer_drift:
                     self.assertTrue(list(stage.glob('before-deploy.*/speaker.db')))
                     wrapper=next(stage.glob('compose-with-history.*'))
                     check=subprocess.run(['sh','-n',str(wrapper)],capture_output=True,text=True)

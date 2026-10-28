@@ -64,6 +64,14 @@ file_sha() { docker exec "$live" sha256sum "$1" | awk '{print $1}'; }
 [ "$(file_sha /app/pipeline/models/speaker_id.py)" = fb5c6f04121e61a4ae1e7d84cc8615c22eaa032aaa58154bf324952f98c9640f ]
 
 work=$(mktemp -d "$stage/private.deploy.XXXXXX")
+[ -f "$stage/reviewed-container-diff.txt" ] && [ ! -L "$stage/reviewed-container-diff.txt" ] || {
+  echo 'A reviewed container writable-layer diff is required before recreation.' >&2; exit 1;
+}
+docker diff "$live" > "$work/diff-raw.txt"
+LC_ALL=C sort "$work/diff-raw.txt" > "$work/diff-sorted.txt"
+cmp -s "$stage/reviewed-container-diff.txt" "$work/diff-sorted.txt" || {
+  echo 'Container writable-layer changes differ from the reviewed list.' >&2; exit 1;
+}
 curl -fsS "$base/check_runtime.py" -o "$work/check_runtime.py"
 curl -fsS "$base/check_post_deploy.py" -o "$work/check_post_deploy.py"
 printf '%s\n' \
@@ -134,6 +142,12 @@ EOF
 chmod 700 "$wrapper"
 echo "Future Compose wrapper: $wrapper"
 
+# Check again immediately before recreation; the writable layer is discarded.
+docker diff "$live" > "$work/diff-latest.txt"
+LC_ALL=C sort "$work/diff-latest.txt" > "$work/diff-latest-sorted.txt"
+cmp -s "$stage/reviewed-container-diff.txt" "$work/diff-latest-sorted.txt" || {
+  echo 'Container writable layer changed during preparation; stopping.' >&2; exit 1;
+}
 started=1
 compose_new up -d --no-deps --no-build --pull never --force-recreate voicepipeline
 [ "$(docker inspect "$live" --format '{{.State.Running}}')" = true ]
