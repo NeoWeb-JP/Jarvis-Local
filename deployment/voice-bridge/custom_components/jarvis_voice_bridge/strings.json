@@ -1,0 +1,1 @@
+{"config":{"step":{"user":{"title":"Connect to VoicePipeline","description":"Connect to a compatible VoicePipeline instance with the speaker metadata patch.","data":{"host":"Host","port":"Port"}}},"abort":{"already_configured":"This server is already configured."}}}

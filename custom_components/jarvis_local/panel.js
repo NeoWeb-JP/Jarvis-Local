@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.23.1';
+      this.root.querySelector('.connection').textContent='v0.24.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -26,7 +26,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Jarvis Local</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
 <ha-card class="settings-card" hidden><h2>Jarvis settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Jarvis</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
-<div class="overview" aria-label="Jarvis overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small></div><div class="history" role="log" aria-live="polite"></div>
+<div class="overview" aria-label="Jarvis overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small><button type="button" class="check-bridge">Check bridge connection</button><small class="bridge-status" role="status"></small></div><div class="history" role="log" aria-live="polite"></div>
 <form><input aria-label="Message to Jarvis" placeholder="Ask Jarvis anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Jarvis">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Jarvis reply</button>
 <details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant whose conversation agent is Jarvis Local. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
 <details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a favourite to run it. Frequent commands fill the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
@@ -38,6 +38,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.save-settings').onclick=()=>this.saveSettings();
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
+    this.root.querySelector('.check-bridge').onclick=()=>this.checkBridge();
     this.root.querySelector('.test-suite').onclick=()=>this.previewChecks();
     this.root.querySelector('.debug-toggle').onchange=e=>this.setDebug(e.target.checked);
     this.root.querySelector('.favourite-current').onclick=()=>this.addFavourite();
@@ -82,6 +83,15 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const engine=pipeline?.stt_engine;
     const friendly=engine==='stt.jarvis_voice_bridge_test'?'Jarvis Voice Bridge':this._hass?.states?.[engine]?.attributes?.friendly_name;
     this.root.querySelector('.overview-stt').textContent=engine?'Speech-to-text: '+(friendly || engine.replace(/^stt\./,'').replace(/_/g,' '))+' (configured)':'Speech-to-text: not selected';
+  }
+  async checkBridge() {
+    const status=this.root.querySelector('.bridge-status'),button=this.root.querySelector('.check-bridge');
+    button.disabled=true;status.textContent='Checking connection…';
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/check_voice_bridge'});
+      status.textContent=result.bridges.length?result.bridges.map(b=>b.name+': '+(b.reachable?'TCP reachable':'not reachable')).join('; ')+' . This checks the connection only.':'No Jarvis Voice Bridge integration configured.';
+    } catch(e){status.textContent='Unable to check the bridge: '+(e.message || String(e));}
+    finally{button.disabled=false;}
   }
   async toggleVoice() {
     if(this.voiceSession) {if(this.voiceSession.recording)this.stopVoice(false);return;}

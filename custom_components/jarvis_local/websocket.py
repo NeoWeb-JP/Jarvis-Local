@@ -14,7 +14,7 @@ from .settings import save
 @callback
 def info(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
-    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.23.1','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
+    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.24.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/clear_diagnostics'})
@@ -74,5 +74,24 @@ async def set_debug(hass,connection,msg):
     if not enabled:data['diagnostics']=[]
     connection.send_result(msg['id'],{'enabled':enabled})
 
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/check_voice_bridge'})
+@websocket_api.async_response
+async def check_voice_bridge(hass,connection,msg):
+    entries=hass.config_entries.async_entries('jarvis_voice_bridge')
+    results=[]
+    for entry in entries:
+        host=entry.data.get('host');port=entry.data.get('port')
+        if not isinstance(host,str) or not isinstance(port,int) or not 1<=port<=65535:
+            results.append({'name':entry.title,'reachable':False,'reason':'Invalid bridge configuration'});continue
+        try:
+            reader,writer=await asyncio.wait_for(asyncio.open_connection(host,port),timeout=3)
+            writer.close()
+            await writer.wait_closed()
+            results.append({'name':entry.title,'reachable':True})
+        except (OSError,TimeoutError):
+            results.append({'name':entry.title,'reachable':False,'reason':'TCP connection failed'})
+    connection.send_result(msg['id'],{'bridges':results})
+
 def register(hass):
-    for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug]:websocket_api.async_register_command(hass,handler)
+    for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge]:websocket_api.async_register_command(hass,handler)
