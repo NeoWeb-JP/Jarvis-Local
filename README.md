@@ -41,3 +41,9 @@ The experimental Jarvis Voice Bridge can pass a speaker match to Jarvis for a pe
 ### Personal morning responses
 
 The morning routine still runs its configured actions. Jarvis selects its spoken greeting separately so an unknown speaker does not receive a greeting written for someone else. Add an optional `morning_responses` list to a profile in `/config/jarvis_voice_id.json`; each string may use `{name}`. Profiles without a list use a general named greeting, and an unknown speaker gets a neutral response. Keep this personal configuration out of the repository. Restart Home Assistant after changing the file. Existing sentence-trigger automations can intercept phrases before this agent; disable any competing trigger if Jarvis does not receive the request.
+
+### Overview and diagnostics
+
+The sidebar shows the chosen voice assistant and speech-to-text engine as configured, not as a connectivity or health check. Voice requests marked as locally processed may have been handled by a Home Assistant sentence trigger; use the Assist debug trace to investigate. Requests intercepted before Jarvis are not present in Jarvis's own diagnostics. Diagnostics show recent text, actions and responses in memory for administrators and can be cleared; they do not include audio. Speaker status indicates whether a personalised profile was used, not whether the underlying speech service found a candidate.
+
+Favourites run immediately when tapped; frequently used entries fill the text box for review. Preview remains available for checking commands before execution. Favourites are stored on the current browser/device.

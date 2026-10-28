@@ -68,6 +68,7 @@ class JarvisAgent(conversation.ConversationEntity):
             cfg=self.hass.data.get('jarvis_local',{}).get('voice_id_config',{})
             command_text,voice_profile=unwrap(command_text,cfg.get('secret'),cfg.get('profiles',{}),self._voice_markers)
             if not command_text:command_text=''
+        original_text=str(command_text)
         try:
             area=area_override or source_area(self.hass,user_input)
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
@@ -227,7 +228,7 @@ class JarvisAgent(conversation.ConversationEntity):
             speech=speech.replace(' Try "help" for supported requests.', '')
         record = {
             'time':datetime.now(timezone.utc).isoformat(),
-            'received_text':command_text,'resolved_text':resolved_text,'transcript_corrections':corrections,
+            'received_text':original_text,'resolved_text':resolved_text,'speaker_personalized':bool(voice_profile),'transcript_corrections':corrections,
             'device_id':getattr(user_input,'device_id',None),
             'satellite_id':getattr(user_input,'satellite_id',None),
             'area':area.name if area else None,'preview':preview,

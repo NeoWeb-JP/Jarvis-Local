@@ -18,6 +18,8 @@ panel.stopVoice(false);assert.deepStrictEqual(packets[1],[4]);assert.equal(sessi
 panel.voiceEvent(session,{type:'stt-end',data:{stt_output:{text:'lamp on'}}});
 panel.voiceEvent(session,{type:'intent-end',data:{intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done'}}}}}});
 assert.equal(panel.conversationId,'abc');assert.deepStrictEqual(lines,[['You','lamp on'],['Jarvis','Done']]);
+panel.voiceEvent(session,{type:'intent-end',data:{processed_locally:true,intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done'}}}}}});
+assert.equal(lines.at(-1)[0],'Routing');assert.match(lines.at(-1)[1],/may have matched/);
 panel.voiceEvent(session,{type:'tts-end',data:{tts_output:{url:'/api/tts_proxy/token'}}});assert.equal(elements['.replay-voice'].hidden,false);
 panel.voiceEvent(session,{type:'run-end'});assert.equal(panel.voiceSession,null);assert.equal(session.unsubscribed,true);assert.equal(panel.busy,false);
 console.log('Panel voice pipeline simulation passed.');

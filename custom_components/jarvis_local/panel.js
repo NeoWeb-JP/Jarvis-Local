@@ -9,7 +9,10 @@ class JarvisLocalPanel extends HTMLElement {
     if (this.root) {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
-      this.root.querySelector('.connection').textContent='Agent: '+id+' | '+(state && state.state!=='unavailable' ? 'Available' : 'Not available')+' | v0.19.0';
+      const available=!!state && !['unavailable','unknown'].includes(state.state);
+      this.root.querySelector('.connection').textContent='v0.20.0';
+      this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
+      this.updateOverview();
     }
   }
   getCardSize() { return 7; }
@@ -19,15 +22,15 @@ class JarvisLocalPanel extends HTMLElement {
 :host{display:block;overflow:auto;height:100%;background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--paper-font-body1_-_font-family,system-ui)}
 .toolbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--app-header-background-color,var(--card-background-color));position:sticky;top:0;z-index:2}.toolbar-title{font-size:20px;font-weight:600}.menu{font-size:24px}.fallback{margin-left:auto}
 button,select,input{font:inherit;color:inherit}button{min-height:44px;border:1px solid var(--divider-color);border-radius:10px;padding:9px 14px;background:var(--secondary-background-color);cursor:pointer}button:hover{filter:brightness(1.1)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--primary-color)}button:disabled{opacity:.5;cursor:default}.menu{border:0;background:transparent;min-width:44px}.toolbar button{padding:8px 12px}.toolbar a{color:inherit}
-ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;padding:24px;border-radius:18px;background:var(--card-background-color)}ha-card[hidden]{display:none}h2{margin:0 0 5px}h3{margin:14px 0 6px;font-size:1rem}small{display:block;color:var(--secondary-text-color);margin:6px 0;font-size:.85rem}.connection{margin:0}.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.status{font-size:.85rem;color:var(--secondary-text-color)}.history{min-height:280px;max-height:54vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:18px 0;white-space:pre-wrap}.history:empty:before{content:'How can I assist?';color:var(--secondary-text-color);padding:12px;background:var(--secondary-background-color);border-radius:12px;align-self:flex-start}.line{padding:11px 14px;background:var(--secondary-background-color);border-radius:14px;max-width:85%;overflow-wrap:anywhere}.line.user{align-self:flex-end;background:var(--primary-color);color:var(--text-primary-color,#fff)}form{display:flex;gap:8px;align-items:center}form input{flex:1;min-width:0;border:1px solid var(--divider-color);border-radius:11px;background:var(--secondary-background-color);padding:13px}form .send{background:var(--primary-color);color:var(--text-primary-color,#fff);border-color:transparent}.speak{min-width:48px;font-size:1.2rem}.tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.quick-commands button{margin:4px}.quick-commands h3{margin:12px 0 4px}details{border-top:1px solid var(--divider-color);padding:12px 0}summary{cursor:pointer;font-weight:600}select{max-width:100%;padding:8px;border:1px solid var(--divider-color);border-radius:8px;background:var(--secondary-background-color)}.voice-status{min-height:1.2em}.settings-fields label{display:block}.room-label{display:block;margin:10px 0}@media(max-width:600px){ha-card{margin:10px;padding:16px}.toolbar{gap:8px}.toolbar a{display:none}.toolbar-title{font-size:18px}.history{min-height:220px}form{flex-wrap:wrap}form input{flex:1 1 calc(100% - 70px)}.line{max-width:92%}}
+ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;padding:24px;border-radius:18px;background:var(--card-background-color)}ha-card[hidden]{display:none}h2{margin:0 0 5px}h3{margin:14px 0 6px;font-size:1rem}small{display:block;color:var(--secondary-text-color);margin:6px 0;font-size:.85rem}.connection{margin:0}.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.status{font-size:.85rem;color:var(--secondary-text-color)}.history{min-height:280px;max-height:54vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:18px 0;white-space:pre-wrap}.history:empty:before{content:'How can I assist?';color:var(--secondary-text-color);padding:12px;background:var(--secondary-background-color);border-radius:12px;align-self:flex-start}.line{padding:11px 14px;background:var(--secondary-background-color);border-radius:14px;max-width:85%;overflow-wrap:anywhere}.line.user{align-self:flex-end;background:var(--primary-color);color:var(--text-primary-color,#fff)}form{display:flex;gap:8px;align-items:center}form input{flex:1;min-width:0;border:1px solid var(--divider-color);border-radius:11px;background:var(--secondary-background-color);padding:13px}form .send{background:var(--primary-color);color:var(--text-primary-color,#fff);border-color:transparent}.speak{min-width:48px;font-size:1.2rem}.tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.quick-commands button{margin:4px}.quick-commands h3{margin:12px 0 4px}details{border-top:1px solid var(--divider-color);padding:12px 0}summary{cursor:pointer;font-weight:600}select{max-width:100%;padding:8px;border:1px solid var(--divider-color);border-radius:8px;background:var(--secondary-background-color)}.overview{display:flex;flex-wrap:wrap;gap:6px 18px;padding:8px 12px;margin-top:12px;background:var(--secondary-background-color);border-radius:10px}.overview small{margin:2px 0}.diag-card{padding:12px;margin:8px 0;background:var(--secondary-background-color);border-radius:10px;overflow-wrap:anywhere}.diag-card p{margin:4px 0}.voice-status{min-height:1.2em}.settings-fields label{display:block}.room-label{display:block;margin:10px 0}@media(max-width:600px){ha-card{margin:10px;padding:16px}.toolbar{gap:8px}.toolbar a{display:none}.toolbar-title{font-size:18px}.history{min-height:220px}form{flex-wrap:wrap}form input{flex:1 1 calc(100% - 70px)}.line{max-width:92%}}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Jarvis Local</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
 <ha-card class="settings-card" hidden><h2>Jarvis settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Jarvis</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
-<div class="history" role="log" aria-live="polite"></div>
+<div class="overview" aria-label="Jarvis overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small></div><div class="history" role="log" aria-live="polite"></div>
 <form><input aria-label="Message to Jarvis" placeholder="Ask Jarvis anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Jarvis">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Jarvis reply</button>
 <details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant whose conversation agent is Jarvis Local. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
-<details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a command to put it in the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
-<details><summary>Tools and diagnostics</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button><button type="button" class="test-suite">Preview checks</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Recent voice and chat requests</summary><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></details></ha-card>`;
+<details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a favourite to run it. Frequent commands fill the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
+<details><summary>Tools and diagnostics</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button><button type="button" class="test-suite">Preview checks</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Recent voice and chat requests</summary><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><div class="diagnostic-cards"></div><details><summary>Raw diagnostics</summary><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></details></details></ha-card>`;
     this.root.querySelector('.menu').onclick = () => this.dispatchEvent(new Event('hass-toggle-menu', {bubbles:true, composed:true}));
     this.root.querySelector('.open-settings').onclick=()=>this.openSettings();
     this.root.querySelector('.close-settings').onclick=()=>this.showSettings(false);
@@ -44,7 +47,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.preview').onclick = () => this.send(true);
     this.root.querySelector('.speak').onclick = () => this.toggleVoice();
     this.root.querySelector('.replay-voice').onclick = () => {if(this.replyAudio)this.replyAudio.play().catch(()=>this.voiceStatus('Audio playback is unavailable on this device.'));};
-    this.root.querySelector('.voice-pipeline').onchange = e => {try {localStorage.setItem('jarvis_local_voice_pipeline',e.target.value);} catch (_) {} };
+    this.root.querySelector('.voice-pipeline').onchange = e => {try {localStorage.setItem('jarvis_local_voice_pipeline',e.target.value);} catch (_) {} this.updateOverview(); };
     this.loadVoicePipelines();
     for (const button of this.root.querySelectorAll('[data-command]')) button.onclick = () => {this.root.querySelector('form input').value=button.dataset.command;this.send();};
     this.root.querySelector('.clear').onclick = () => {this.root.querySelector('.history').replaceChildren();this.conversationId=undefined;};
@@ -64,9 +67,16 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       for(const pipeline of pipelines)select.add(new Option(pipeline.name,pipeline.id));
       const preferred=pipelines.find(p=>p.id===saved) || pipelines.find(p=>p.id===result.preferred_pipeline) || (pipelines.length===1?pipelines[0]:null);
       if(preferred)select.value=preferred.id;
-      this.voicePipelines=pipelines;
+      this.voicePipelines=pipelines;this.updateOverview();
     } catch(e) {select.replaceChildren(new Option('Unable to load assistants',''));this.voiceStatus('Could not load voice assistants: '+(e.message || String(e)));}
     finally {this.loadingPipelines=false;}
+  }
+  updateOverview() {
+    if(!this.root)return;
+    const select=this.root.querySelector('.voice-pipeline');
+    const pipeline=(this.voicePipelines || []).find(p=>p.id===select?.value);
+    this.root.querySelector('.overview-pipeline').textContent='Voice assistant: '+(pipeline?.name || 'not selected');
+    this.root.querySelector('.overview-stt').textContent='Speech-to-text: '+(pipeline?.stt_engine || 'not selected')+' (configured)';
   }
   async toggleVoice() {
     if(this.voiceSession) {if(this.voiceSession.recording)this.stopVoice(false);return;}
@@ -119,6 +129,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     } else if(event.type==='intent-end'){
       const reply=event.data.intent_output;this.conversationId=reply.conversation_id;
       this.line('Jarvis',reply.response?.speech?.plain?.speech || 'No text response.');
+      if(event.data.processed_locally===true)this.line('Routing','Home Assistant processed this request locally. It may have matched a sentence trigger before Jarvis. Check the Assist debug trace.');
     } else if(event.type==='tts-end') {
       const url=event.data.tts_output?.url;
       if(url){if(this.replyAudio)this.replyAudio.pause();this.replyAudio=new Audio(this._hass.hassUrl ? this._hass.hassUrl(url) : url);this.root.querySelector('.replay-voice').hidden=false;this.replyAudio.play().catch(()=>this.voiceStatus('Tap Play Jarvis reply to hear the response.'));}
@@ -171,7 +182,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const make=(text,container,removable)=>{
       const wrapper=document.createElement('span');
       const button=document.createElement('button');button.type='button';button.textContent=text;button.title='Put this command in the message box';
-      button.onclick=()=>{const input=this.root.querySelector('form input');input.value=text;input.focus();};wrapper.append(button);
+      button.onclick=()=>{const input=this.root.querySelector('form input');input.value=text;if(removable)this.send();else input.focus();};button.title=removable?'Run this command':'Put this command in the message box';if(removable)button.setAttribute('aria-label','Run favourite '+text);wrapper.append(button);
       if(removable){const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove favourite '+text);remove.onclick=()=>{this.favourites=this.favourites.filter(x=>x!==text);this.saveQuick();this.renderQuick();};wrapper.append(remove);}
       container.append(wrapper);
     };
@@ -268,10 +279,20 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       for(const area of data.areas) select.add(new Option(area.name,area.id));
       select.value=selected;
       this.root.querySelector('.diagnostics').textContent=JSON.stringify(data.diagnostics,null,2);
+      this.renderDiagnostics(data.diagnostics || []);
       this.settings=data.settings || {};
       this.infoLoaded=true;
     } catch(e) {this.root.querySelector('.diagnostics').textContent=e.message || String(e);}
     finally {this.loadingInfo=false;}
+  }
+  renderDiagnostics(records) {
+    const container=this.root.querySelector('.diagnostic-cards');container.replaceChildren();
+    if(!records.length){container.textContent='No Jarvis requests recorded yet.';return;}
+    for(const record of records.slice().reverse()){
+      const card=document.createElement('div');card.className='diag-card';
+      const fields=[['When',record.time],['Heard',record.received_text],['Understood',record.resolved_text || record.received_text],['Actions',(record.steps || []).map(step=>step.label || step.kind).join('; ') || 'None'],['Result',record.outcome],['Speaker',record.speaker_personalized?'Profile used':'No profile used'],['Reply',record.response]];
+      for(const [label,value] of fields){const row=document.createElement('p');row.textContent=label+': '+(value || '—');card.append(row);}container.append(card);
+    }
   }
   line(who, text) {const el=document.createElement('div');el.className='line'+(who==='You'?' user':'');el.textContent=who+': '+text;const box=this.root.querySelector('.history');box.append(el);box.scrollTop=box.scrollHeight;}
   async send(preview=false) {
