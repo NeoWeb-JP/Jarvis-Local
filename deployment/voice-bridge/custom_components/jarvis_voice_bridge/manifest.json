@@ -1,1 +1,0 @@
-{"domain":"jarvis_voice_bridge","name":"Jarvis Voice Bridge","version":"0.2.0","documentation":"https://github.com/NeoWeb-JP/Jarvis-Local","codeowners":[],"config_flow":true,"iot_class":"local_push","dependencies":["stt","wyoming"]}
