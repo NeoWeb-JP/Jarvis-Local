@@ -38,7 +38,7 @@ async def async_setup_entry(hass, entry):
         from .websocket import register
         register(hass)
         data['ws_registered']=True
-    await hass.config_entries.async_forward_entry_setups(entry, ["conversation"])
+    await hass.config_entries.async_forward_entry_setups(entry, ["conversation", "tts"])
     if not data.get("static_registered"):
         await hass.http.async_register_static_paths([
             StaticPathConfig("/jarvis_local/panel.js", str(Path(__file__).parent / "panel.js"), False),
@@ -53,12 +53,12 @@ async def async_setup_entry(hass, entry):
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
         await data["timers"].stop()
-        await hass.config_entries.async_unload_platforms(entry, ["conversation"])
+        await hass.config_entries.async_unload_platforms(entry, ["conversation", "tts"])
         raise
     return True
 
 async def async_unload_entry(hass, entry):
-    if await hass.config_entries.async_unload_platforms(entry, ["conversation"]):
+    if await hass.config_entries.async_unload_platforms(entry, ["conversation", "tts"]):
         await hass.data[DOMAIN]["timers"].stop()
         frontend.async_remove_panel(hass, "jarvis-local-app")
         hass.data[DOMAIN].pop("agent", None)
