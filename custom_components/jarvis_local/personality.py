@@ -2,6 +2,7 @@
 import json
 import logging
 import random
+from time import perf_counter
 from collections import deque
 from pathlib import Path
 from homeassistant.exceptions import HomeAssistantError
@@ -18,14 +19,24 @@ def choose(hass,mode,action,catalog):
     history.append(line)
     return line
 
+async def _timed_script(hass, name, data, context, stage):
+    """Measure awaited script execution, including failures, without logging speech."""
+    started = perf_counter()
+    try:
+        return await hass.services.async_call(
+            'script', name, data, blocking=True, return_response=True, context=context)
+    finally:
+        _LOGGER.debug('Jarvis response timing: %s=%.1f ms', stage,
+                      (perf_counter() - started) * 1000)
+
 async def confirmation(hass, context, fallback, action='general'):
     global CATALOG
     script_id=get(hass, 'personality_script')
     state=hass.states.get(script_id) if isinstance(script_id, str) and script_id.startswith('script.') else None
     if state is None or state.state in {'unknown','unavailable'}:return fallback
     try:
-        reply=await hass.services.async_call('script',script_id.split('.', 1)[1],
-            {'response_context':'general'},blocking=True,return_response=True,context=context)
+        reply=await _timed_script(hass, script_id.split('.', 1)[1],
+            {'response_context':'general'}, context, 'personality_script')
         if not isinstance(reply,dict):return fallback
         mode=reply.get('personality')
         if mode not in {'Classic','Sassy','Savage','Guest','Night'}:
@@ -41,8 +52,8 @@ async def confirmation(hass, context, fallback, action='general'):
         phonetic=hass.states.get(phonetic_id) if isinstance(phonetic_id, str) and phonetic_id.startswith('script.') else None
         if phonetic and phonetic.state not in {'unknown','unavailable'}:
             try:
-                converted=await hass.services.async_call('script',phonetic_id.split('.', 1)[1],
-                    {'input_text':line},blocking=True,return_response=True,context=context)
+                converted=await _timed_script(hass, phonetic_id.split('.', 1)[1],
+                    {'input_text':line}, context, 'phonetic_script')
                 value=converted.get('text') if isinstance(converted,dict) else None
                 if isinstance(value,str) and value.strip():return value.strip()
             except (HomeAssistantError,ValueError,TypeError):
