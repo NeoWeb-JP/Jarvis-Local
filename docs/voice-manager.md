@@ -1,42 +1,65 @@
-# Jarvis Voice Manager (development integration)
+# Jarvis Voice Manager: persistent cache and fallback
 
-## Configured provider
+## Configuration
 
-The user's existing Home Assistant ElevenLabs provider is
-`tts.elevenlabs_text_to_speech`. No additional ElevenLabs API key is required.
+The integration provides a Jarvis Voice Manager TTS entity. It uses the
+existing Home Assistant TTS integrations, not an additional ElevenLabs API key.
 
-## What's implemented on main
+Default providers:
+- **Primary:** `tts.elevenlabs_text_to_speech`
+- **Fallback:** `tts.jarvis_xtts` (the existing GPU XTTS Home Assistant entity)
 
-- `tts.py` provides a new `TextToSpeechEntity` named **Jarvis Voice Manager**.
-- `__init__.py` registers both the conversation and TTS platforms.
-- `voice_provider.py` fetches actual audio from the existing ElevenLabs entity through Home Assistant's TTS media-source API with `cache=True`.
-- `voice_cache.py` implements a separate persistent provider-independent cache, **not connected to the TTS entity yet**.
-- The manifest now declares the Home Assistant TTS dependency.
+The entity can be tested after deploying the updated source and restarting
+Home Assistant. Do not switch the Muse Assist pipeline until manual speech
+generation succeeds.
 
-### What this does and does not cache
+## Cache
 
-The working TTS path currently relies on Home Assistant's built-in TTS
-media-source cache. The independent `VoiceCache` is not yet used by this
-entity. A subsequent implementation must verify whether provider-specific
-options (voice/model) are included in the HA cache identity and connect
-the independent cache if more control is needed.
+Audio is stored persistently at `/config/jarvis_voice_cache` (outside the
+GitHub-managed custom component). For each request, the manager:
 
-## Not yet verified
+1. Checks a format-aware cache keyed by exact text, provider, revision,
+   language and synthesis options.
+2. On miss, asks Home Assistant's provider TTS media-source API for audio
+   with its own built-in cache enabled, and stores valid audio atomically.
+3. If ElevenLabs generation fails, tries the **separate** XTTS cache/provider.
+4. Never mixes the fallback voice into the ElevenLabs cache.
 
-- Compatible with the exact installed Home Assistant release and ElevenLabs
-  integration implementation.
-- Entity creation, allowed language tag, and Muse playback.
-- Real caching measured against actual ElevenLabs account usage.
-- Reliable local XTTS fallback, storage metrics and monthly credit limits.
-- Independent format-aware cache and catalogue pre-generation.
+Identical concurrent requests are coalesced for a single manager instance.
+Cached recordings can be used even if ElevenLabs is temporarily offline.
 
-## Test and release policy
+**Important:** The provider voice/model currently configured in Home
+Assistant is not directly discoverable from this cache's metadata.
+Change `hass.data['jarvis_local']['voice_cache_revision']` to a new value
+if you change voices or ElevenLabs synthesis settings, or remove the
+cache directory, to avoid returning recordings in the previous voice.
+A proper settings UI for this value is still required.
 
-Do not change the production Assist pipeline until the new entity appears
-and can generate audio through a manual test. Keep the existing ElevenLabs
-entity selected until validated. Verify no paid repeat generation by
-comparing ElevenLabs usage, rather than assuming a cache hit.
+## Outstanding work
 
-These code changes are on `main` per the repository owner's request.
-The owner handles GitHub Releases and deployment. No live Home Assistant
-files have been modified.
+- Validate against the installed Home Assistant version (entity registration,
+  ElevenLabs media-source output and Muse playback).
+- Verify fallback entity `tts.jarvis_xtts` actually exists and works.
+- Add a settings/config-flow UI for provider IDs, cache revision, retention,
+  size limits, and usage statistics.
+- Confirm provider failures beyond the handled exceptions and TTS format
+  compatibility. Test failed and concurrent generations end-to-end.
+- Add ElevenLabs budget/usage controls and catalogue pre-generation.
+- Avoid assuming saved audio is encrypted: treat the cache as private
+  household data and exclude it from public repositories.
+
+## Deploy/test
+
+1. Update Jarvis Local from GitHub main using your chosen deployment method.
+2. Restart Home Assistant and confirm Jarvis Voice Manager exists.
+3. Use a manual TTS test with a short phrase; verify ElevenLabs playback.
+4. Repeat the exact phrase and confirm a hit via debug logs and no new
+   ElevenLabs usage. Check files under `/config/jarvis_voice_cache`.
+5. Test fallback by temporarily making ElevenLabs unavailable without
+   clearing its cache and using a **new uncached phrase**.
+6. Once verified, select Jarvis Voice Manager in the Assist pipeline.
+7. Rollback: reselect the previous ElevenLabs entity in Assist, then
+   restore the previous Jarvis Local release if needed.
+
+All changes currently sit on `main`, per owner preference. The owner
+controls releases. No production Home Assistant deployment was performed.
