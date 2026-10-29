@@ -65,3 +65,59 @@ def test_failed_generation_is_not_cached(tmp_path):
             raise AssertionError("provider error was not propagated")
         assert not list(tmp_path.rglob("*.wav"))
     asyncio.run(run())
+
+
+def test_dynamic_format_and_persistence(tmp_path):
+    async def run():
+        generated = 0
+        async def generate():
+            nonlocal generated
+            generated += 1
+            return "mp3", b"mp3-audio"
+        params = dict(text="Hello.", provider="tts.elevenlabs_text_to_speech",
+                      voice_id="v1", model="flash", generate=generate)
+        first = await VoiceCache(tmp_path).get_or_generate_audio(**params)
+        second = await VoiceCache(tmp_path).get_or_generate_audio(**params)
+        assert first == ("mp3", b"mp3-audio", False)
+        assert second == ("mp3", b"mp3-audio", True)
+        assert generated == 1
+    asyncio.run(run())
+
+
+def test_dynamic_format_concurrency_and_provider_isolation(tmp_path):
+    async def run():
+        cache = VoiceCache(tmp_path)
+        count = 0
+        async def generate():
+            nonlocal count
+            count += 1
+            await asyncio.sleep(0.02)
+            return "wav", b"wave-audio"
+        def args(provider):
+            return dict(text="Lights on", provider=provider,
+                        voice_id="v1", model="model", generate=generate)
+        results = await asyncio.gather(*[
+            cache.get_or_generate_audio(**args("elevenlabs")) for _ in range(5)
+        ])
+        assert count == 1
+        assert sum(hit for _, _, hit in results) == 4
+        other = await cache.get_or_generate_audio(**args("xtts"))
+        assert other[2] is False
+        assert count == 2
+    asyncio.run(run())
+
+
+def test_dynamic_format_does_not_cache_failure(tmp_path):
+    async def run():
+        async def generate():
+            return "wav", b""
+        try:
+            await VoiceCache(tmp_path).get_or_generate_audio(
+                text="Empty", provider="elevenlabs", voice_id="v1",
+                model="m", generate=generate)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Empty audio should be rejected")
+        assert not list(tmp_path.rglob("*.wav"))
+    asyncio.run(run())
