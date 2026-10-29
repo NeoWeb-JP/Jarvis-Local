@@ -16,8 +16,8 @@ def pending(hass, domain, action, data):
 
 async def verify(hass, domain, action, data):
     # Reported state may be optimistic; this is not physical verification.
-    for _ in range(5):
+    for delay in (0.05, 0.05, 0.1, 0.2, 0.2, 0.2, 0.2):
         remaining=pending(hass,domain,action,data)
         if not remaining:return []
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(delay)
     return pending(hass,domain,action,data)
