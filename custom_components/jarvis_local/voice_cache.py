@@ -99,3 +99,61 @@ class VoiceCache:
             await asyncio.to_thread(write_atomic)
             self.misses += 1
             return audio, False
+
+    async def get_or_generate_audio(
+        self, *, text: str, provider: str, voice_id: str, model: str,
+        generate: Callable[[], Awaitable[tuple[str, bytes]]],
+        language: str = "en", settings: dict | None = None,
+    ) -> tuple[str, bytes, bool]:
+        """Cache audio when the provider chooses its output format.
+
+        An identity-wide lock prevents simultaneous misses from generating
+        multiple paid requests. Never return a different provider's audio.
+        """
+        identity = self.key(
+            text=text, provider=provider, voice_id=voice_id, model=model,
+            language=language, settings=settings, extension="wav"
+        )
+        async with self._locks[identity]:
+            for ext in ("mp3", "wav", "ogg", "flac"):
+                key = self.key(
+                    text=text, provider=provider, voice_id=voice_id,
+                    model=model, language=language, settings=settings,
+                    extension=ext
+                )
+                path = self.path_for(key, ext)
+                try:
+                    audio = await asyncio.to_thread(path.read_bytes)
+                    if audio:
+                        self.hits += 1
+                        return ext, audio, True
+                except FileNotFoundError:
+                    pass
+
+            ext, audio = await generate()
+            if ext not in {"mp3", "wav", "ogg", "flac"}:
+                raise ValueError("Unsupported TTS audio format")
+            if not isinstance(audio, bytes) or not audio:
+                raise ValueError("TTS provider returned empty or invalid audio")
+            key = self.key(
+                text=text, provider=provider, voice_id=voice_id, model=model,
+                language=language, settings=settings, extension=ext
+            )
+            path = self.path_for(key, ext)
+
+            def store():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                fd, tmp = tempfile.mkstemp(prefix=".jarvis-", dir=path.parent)
+                try:
+                    with os.fdopen(fd, "wb") as stream:
+                        stream.write(audio)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    os.replace(tmp, path)
+                finally:
+                    if os.path.exists(tmp):
+                        os.unlink(tmp)
+
+            await asyncio.to_thread(store)
+            self.misses += 1
+            return ext, audio, False
