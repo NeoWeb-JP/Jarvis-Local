@@ -53,10 +53,6 @@ class JarvisVoiceManager(TextToSpeechEntity):
         for entity_id in candidates:
             if entity_id == self.entity_id or entity_id.startswith("tts.jarvis_voice_manager"):
                 continue
-            state = self.hass.states.get(entity_id)
-            if state is None or state.state == "unavailable":
-                errors.append(f"{entity_id}: unavailable")
-                continue
             try:
                 extension, audio, hit = await self._cache.get_or_generate_audio(
                     text=message,
