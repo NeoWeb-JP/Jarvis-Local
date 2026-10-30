@@ -19,7 +19,7 @@ const context={HTMLElement:class{},customElements:{get:()=>false,define:(_,cls)=
 vm.runInNewContext(fs.readFileSync('custom_components/jarvis_local/panel.js','utf8'),context);
 const panel=new Panel();
 const elements={};
-for(const name of ['voice-cache-summary','voice-cache-source','phrase-suggestions','voice-cache-entries','sentence-new-part','save-sentence','phrase-message','phrase-player','clip-import-message','clip-import-preview','clip-pack-info','clip-confirm','import-clips','sentence-tokens','sentence-text','preview-sentence','undo-sentence','clear-sentence','sentence-status','sentence-player','sentence-pause','sentence-pause-value','sentence-box','recording-search','recording-search-status'])elements['.'+name]=new Element();
+for(const name of ['voice-cache-summary','voice-cache-source','phrase-suggestions','voice-cache-entries','sentence-new-part','save-sentence','phrase-message','phrase-player','clip-import-message','clip-import-preview','clip-pack-info','clip-confirm','import-clips','sentence-tokens','sentence-text','preview-sentence','undo-sentence','clear-sentence','sentence-status','sentence-player','sentence-pause','sentence-pause-value','sentence-box','recording-search','recording-search-status','previous-recordings','next-recordings','recordings-page-status'])elements['.'+name]=new Element();
 elements['.sentence-pause'].value='20';
 panel.root={querySelector:key=>elements[key]};
 const requests=[];
@@ -131,12 +131,39 @@ panel._hass={callWS:async request=>{
   assert.match(elements['.voice-cache-entries'].children[0].textContent,/new/);
   assert.equal(panel.sentenceParts.join(' '),sentenceBeforeSearch);
   elements['.recording-search'].value='';
+  let recordingTotal=23;
+  const recordingRows=Array.from({length:23},(_,i)=>({...data.entries[0],text:'Recording '+(i+1)}));
+  panel._hass.callWS=async request=>{
+    if(request.type!=='jarvis_local/voice_cache')return normalCall(request);
+    requests.push(request);
+    const count=request.query?0:recordingTotal,pages=Math.max(1,Math.ceil(count/10)),page=Math.min(request.page || 1,pages),offset=(page-1)*10;
+    return {...data,count,matched_count:count,page,page_count:pages,page_size:10,
+      entries:recordingRows.slice(offset,Math.min(offset+10,count)),palette_entries:data.entries,
+      first:count?offset+1:0,last:Math.min(offset+10,count)};
+  };
+  panel.recordingPage=1;await panel.loadVoiceCache();
+  assert.equal(elements['.voice-cache-entries'].children.length,10);
+  assert.equal(elements['.previous-recordings'].disabled,true);assert.equal(elements['.next-recordings'].disabled,false);
+  await panel.changeRecordingPage(1);assert.equal(elements['.recordings-page-status'].textContent,'Page 2 of 3');
+  assert.match(elements['.recording-search-status'].textContent,/11–20 of 23/);
+  await panel.changeRecordingPage(1);assert.equal(elements['.voice-cache-entries'].children.length,3);
+  assert.equal(elements['.next-recordings'].disabled,true);
+  const requestsAtLastPage=requests.length;await panel.changeRecordingPage(1);assert.equal(requests.length,requestsAtLastPage);
+  assert.equal(panel.sentenceParts.join(' '),sentenceBeforeSearch);
+  recordingTotal=5;await panel.loadVoiceCache();assert.equal(panel.recordingPage,1);
+  assert.equal(elements['.recordings-page-status'].textContent,'Page 1 of 1');
+  elements['.recording-search'].value='nothing';panel.recordingPage=1;await panel.loadVoiceCache();
+  assert.equal(elements['.previous-recordings'].disabled,true);assert.equal(elements['.next-recordings'].disabled,true);
+  assert.match(elements['.recording-search-status'].textContent,/0 matching/);
+  elements['.recording-search'].value='';
   panel._hass.callWS=async()=>{throw new Error('Storage unavailable');};
   await panel.saveSentence();assert.match(elements['.sentence-status'].textContent,/Storage unavailable/);
   assert.equal(elements['.save-sentence'].disabled,false);
   await panel.loadVoiceCache();assert.match(elements['.voice-cache-summary'].textContent,/Could not load/);
   console.log('Phrase cache interactions passed.');
 })().catch(err=>{console.error(err);process.exitCode=1;});
+
+
 
 
 

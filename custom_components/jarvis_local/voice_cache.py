@@ -60,11 +60,15 @@ class VoiceCache:
                 return False
             return True
 
-    async def snapshot(self, limit=200, query=''):
+    async def snapshot(self, limit=200, query='', page=None, page_size=10):
         """Private administrator inventory; old files remain readable."""
         if not isinstance(query,str) or len(query)>200:
             raise ValueError('Search must be at most 200 characters')
         query=query.strip().casefold()
+        if page is not None and (type(page) is not int or page < 1):
+            raise ValueError('Page must be a positive integer')
+        if type(page_size) is not int or not 1 <= page_size <= 100:
+            raise ValueError('Invalid page size')
         def scan():
             parent = self.directory
             while not parent.exists():parent = parent.parent
@@ -82,11 +86,17 @@ class VoiceCache:
                     metadata={'text':'Older cached audio (text unavailable)','kind':'legacy'}
                 entries.append({**metadata,'key':path.stem,'extension':path.suffix[1:],
                                 'bytes':path.stat().st_size})
-            entries.sort(key=lambda item:item.get('created',0),reverse=True)
+            entries.sort(key=lambda item:(item.get('created',0),item['key']),reverse=True)
             matches=[entry for entry in entries if not query or query in ' '.join(
                 str(entry.get(field,'')) for field in ('text','kind','provider','voice_id')
             ).casefold()]
-            return {'entries':matches[:limit], 'palette_entries':entries[:limit],
+            page_count=max(1,(len(matches)+page_size-1)//page_size)
+            current_page=min(page,page_count) if page is not None else 1
+            offset=(current_page-1)*page_size
+            shown=matches[offset:offset+page_size] if page is not None else matches[:limit]
+            return {'entries':shown, 'palette_entries':entries[:limit],
+                    'page':current_page,'page_count':page_count,'page_size':page_size,
+                    'first':offset+1 if shown else 0,'last':offset+len(shown),
                     'matched_count':len(matches), 'query':query, 'count':count, 'bytes':used,
                     'limit_bytes':self.max_bytes, 'free_bytes':free,
                     'reserve_bytes':self.min_free_bytes,
@@ -265,6 +275,8 @@ class VoiceCache:
                 await asyncio.to_thread(remove_older_formats)
             self.misses += 1
             return saved
+
+
 
 
 

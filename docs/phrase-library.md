@@ -1,5 +1,15 @@
 # Reusable voice phrases (0.28.0)
 
+## Collapsible saved recordings and pagination (0.33.0)
+
+The recording cards and search controls are inside **Saved recordings**, an
+accordion that starts collapsed. Expand it to browse **10 recordings per page**
+with **Previous** and **Next**, a page indicator, and the displayed item range.
+Search still covers the whole cache and starts at page one when changed or
+cleared. The final page can contain fewer than ten recordings. Empty results
+disable both navigation buttons. Browsing pages preserves the sentence builder
+and its palette, and never generates speech or changes recordings.
+
 ## Build, generate missing clips and save (0.32.0)
 
 The sentence builder is now the recording workflow. Click saved clips or type a
@@ -49,7 +59,7 @@ Use **Search saved recordings** immediately above the recording cards to filter
 by phrase text, recording type, provider or voice identity. Search ignores case
 and covers the full cache, including older recordings beyond the first 200
 normally shown. **Clear search** returns to the latest recordings. The count
-shows how many matches were found; at most 200 matching cards are displayed.
+shows how many matches were found, with ten matching cards per page.
 Searching does not change the sentence-builder palette or selected clips, request
 speech generation, or modify saved audio. Results from an older search cannot
 replace a newer query's results.
@@ -199,6 +209,8 @@ Main has been updated without a PR, following the owner's preference. No live
 HA deployment, restart, pipeline change, paid pre-generation or Proxmox storage
 change is part of this implementation. After deployment, test one phrase in the
 screen, listen to its preview, then test the manager in your Assist pipeline.
+
+
 
 
 

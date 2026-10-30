@@ -49,7 +49,7 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
             sidebar_title="Home Voice Assistant", sidebar_icon="mdi:robot",
-            module_url="/jarvis_local/panel.js?v=0.32.1",
+            module_url="/jarvis_local/panel.js?v=0.33.0",
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
         await data["timers"].stop()
@@ -66,6 +66,9 @@ async def async_unload_entry(hass, entry):
         hass.data[DOMAIN].pop("diagnostics", None)
         return True
     return False
+
+
+
 
 
 

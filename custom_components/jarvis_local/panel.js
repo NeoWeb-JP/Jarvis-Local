@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.32.1';
+      this.root.querySelector('.connection').textContent='v0.33.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -26,6 +26,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 .sentence-box{padding:14px;border:1px solid var(--divider-color);border-radius:12px;margin:12px 0}.sentence-tokens{display:flex;flex-wrap:wrap;gap:8px;min-height:46px}.sentence-piece{display:inline-flex;align-items:center;flex-wrap:wrap;border:1px solid var(--primary-color);border-radius:10px;padding:4px;gap:3px}.sentence-piece.missing{border-style:dashed}.sentence-piece button{padding:6px 9px;min-height:36px}.sentence-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;font-size:1.1rem}.sentence-gap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sentence-gap input{max-width:180px}.sentence-player{width:100%;margin-top:8px}.phrase-suggestions button{border-style:dashed}.phrase-suggestions button.saved{border-style:solid}.sentence-empty{color:var(--secondary-text-color);align-self:center}audio{max-width:100%}
 .recording-search-controls{align-items:flex-end}.recording-search-controls label{display:flex;flex:1 1 260px;flex-direction:column;gap:6px}.recording-search{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--divider-color);border-radius:10px;background:var(--secondary-background-color);padding:10px}
 .phrase-suggestions{display:block}.phrase-category{margin:12px 0}.phrase-category h4{margin:0 0 8px;font-size:.95rem}.phrase-category .tools{margin:0}
+.recording-pagination{align-items:center;justify-content:space-between}.recordings-page-status{color:var(--secondary-text-color)}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Declan</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
 <ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Declan</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
@@ -52,8 +53,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 <label><input type="checkbox" class="clip-confirm"> These recordings use my current Declan voice and settings.</label>
 <button type="button" class="import-clips">Import recordings</button>
 <small class="clip-import-message" role="status"></small></details>
+<details class="saved-recordings"><summary>Saved recordings</summary>
 <div class="tools recording-search-controls"><label>Search saved recordings <input type="search" class="recording-search" aria-label="Search saved recordings" placeholder="Search phrases, clip types or voices" maxlength="200"></label><button type="button" class="clear-recording-search">Clear search</button></div><small class="recording-search-status" role="status"></small>
-<div class="voice-cache-entries"></div></details>
+<div class="voice-cache-entries"></div><nav class="tools recording-pagination" aria-label="Saved recording pages"><button type="button" class="previous-recordings">Previous</button><span class="recordings-page-status" role="status">Page 1 of 1</span><button type="button" class="next-recordings">Next</button></nav></details></details>
 <details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a favourite to run it. Frequent commands fill the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
 <details><summary>Tools</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Troubleshooting</summary><label><input type="checkbox" class="debug-toggle"> Enable debug and troubleshooting</label><small>Off by default. When enabled, recent request details are held temporarily in memory and routing messages are shown in chat. Disabling clears them.</small><div class="debug-content" hidden><button type="button" class="test-suite">Preview checks</button><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><div class="diagnostic-cards"></div><details><summary>Raw diagnostics</summary><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></div></details></details></ha-card>`;
     this.root.querySelector('.menu').onclick = () => this.dispatchEvent(new Event('hass-toggle-menu', {bubbles:true, composed:true}));
@@ -64,9 +66,12 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
     this.root.querySelector('.voice-cache-section').ontoggle=e=>{if(e.target.open)this.loadVoiceCache();};
+    this.root.querySelector('.saved-recordings').ontoggle=e=>{if(e.target.open)this.loadVoiceCache();};
     this.root.querySelector('.refresh-voice-cache').onclick=()=>this.loadVoiceCache();
-    this.root.querySelector('.recording-search').oninput=()=>{clearTimeout(this.recordingSearchTimer);this.root.querySelector('.recording-search-status').textContent='Searching saved recordings…';this.recordingSearchTimer=setTimeout(()=>this.loadVoiceCache(),200);};
-    this.root.querySelector('.clear-recording-search').onclick=()=>{clearTimeout(this.recordingSearchTimer);this.root.querySelector('.recording-search').value='';this.loadVoiceCache();};
+    this.root.querySelector('.previous-recordings').onclick=()=>this.changeRecordingPage(-1);
+    this.root.querySelector('.next-recordings').onclick=()=>this.changeRecordingPage(1);
+    this.root.querySelector('.recording-search').oninput=()=>{this.recordingPage=1;clearTimeout(this.recordingSearchTimer);this.root.querySelector('.recording-search-status').textContent='Searching saved recordings…';this.recordingSearchTimer=setTimeout(()=>this.loadVoiceCache(),200);};
+    this.root.querySelector('.clear-recording-search').onclick=()=>{this.recordingPage=1;clearTimeout(this.recordingSearchTimer);this.root.querySelector('.recording-search').value='';this.loadVoiceCache();};
     this.root.querySelector('.save-sentence').onclick=()=>this.saveSentence();
     this.root.querySelector('.add-sentence-part').onclick=()=>this.addTypedSentencePart();
     this.root.querySelector('.sentence-new-part').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();this.addTypedSentencePart();}};
@@ -243,17 +248,29 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     } catch(e){status.textContent='Could not import recordings: '+(e.message || String(e));}
     finally{button.disabled=false;}
   }
+  updateRecordingPagination() {
+    const page=this.recordingPage || 1,pages=this.voiceCacheData?.page_count || 1;
+    this.root.querySelector('.previous-recordings').disabled=!!this.loadingVoiceCache || page<=1;
+    this.root.querySelector('.next-recordings').disabled=!!this.loadingVoiceCache || page>=pages;
+    this.root.querySelector('.recordings-page-status').textContent='Page '+page+' of '+pages;
+  }
+  async changeRecordingPage(delta) {
+    if(this.loadingVoiceCache)return;
+    const next=Math.max(1,Math.min((this.recordingPage || 1)+delta,this.voiceCacheData?.page_count || 1));
+    if(next===(this.recordingPage || 1))return;
+    this.recordingPage=next;await this.loadVoiceCache();
+  }
   async loadVoiceCache() {
     if(!this._hass)return;
     if(this.loadingVoiceCache){this.voiceCacheRefreshPending=true;return;}
-    const query=this.root.querySelector('.recording-search').value.trim();
-    this.voiceCacheRefreshPending=false;this.loadingVoiceCache=true;
-    const summary=this.root.querySelector('.voice-cache-summary');
+    const query=this.root.querySelector('.recording-search').value.trim(),requestedPage=this.recordingPage || 1;
+    this.voiceCacheRefreshPending=false;this.loadingVoiceCache=true;this.updateRecordingPagination();
+    const summary=this.root.querySelector('.voice-cache-summary');let applied=false;
     try {
-      const data=await this._hass.callWS({type:'jarvis_local/voice_cache',query});
-      if(query!==this.root.querySelector('.recording-search').value.trim())return;
+      const data=await this._hass.callWS({type:'jarvis_local/voice_cache',query,page:requestedPage});
+      if(query!==this.root.querySelector('.recording-search').value.trim() || requestedPage!==(this.recordingPage || 1))return;
       if(this.voiceCacheData?.import_voice_token && this.voiceCacheData.import_voice_token!==data.import_voice_token)this.sentenceChanged();
-      this.voiceCacheData=data;
+      this.voiceCacheData=data;this.recordingPage=data.page || requestedPage;applied=true;
       const mb=n=>(n/1048576).toFixed(1);
       summary.textContent=data.count+' recordings · '+mb(data.bytes)+' MB of '+mb(data.limit_bytes)+' MB limit · '+(data.free_bytes/1073741824).toFixed(1)+' GB free on Home Assistant storage.';
       const sourceNames={elevenlabs_cached:'Saved whole sentence',elevenlabs_generated:'Whole sentence requested from provider',elevenlabs_phrase_cached:'Reused saved clips or assembled response',elevenlabs_phrase_generated:'Generated missing clips',elevenlabs_category_cached:'Saved alternative response',xtts_cached:'Saved fallback voice',xtts_generated:'Fallback voice generated'};
@@ -291,7 +308,8 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       this.renderSentence();
       const entries=this.root.querySelector('.voice-cache-entries');entries.replaceChildren();
       const matched=data.matched_count ?? data.count;
-      this.root.querySelector('.recording-search-status').textContent=query?'Showing '+(data.entries || []).length+' of '+matched+' matching recordings.':'Showing '+(data.entries || []).length+' of '+data.count+' recordings.';
+      const first=data.first ?? ((data.entries || []).length?((this.recordingPage-1)*10+1):0),last=data.last ?? ((this.recordingPage-1)*10+(data.entries || []).length);
+      this.root.querySelector('.recording-search-status').textContent=matched?'Showing '+first+'–'+last+' of '+matched+(query?' matching recordings.':' recordings.'):(query?'0 matching recordings.':'0 recordings.');
       if(!(data.entries || []).length){const p=document.createElement('p');p.textContent=query?'No saved recordings match “'+query+'”.':'No saved recordings yet. Build and save a sentence, or import recordings to get started.';entries.append(p);}
       for(const entry of data.entries || []) {
         const row=document.createElement('div');row.className='diag-card';
@@ -306,9 +324,8 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
         }
         entries.append(row);
       }
-      if(matched>(data.entries || []).length){const p=document.createElement('small');p.textContent='Showing the newest '+data.entries.length+' matches. Refine your search to find older recordings.';entries.append(p);}
     } catch(e){if(query===this.root.querySelector('.recording-search').value.trim()){summary.textContent='Could not load voice cache: '+(e.message || String(e));this.root.querySelector('.recording-search-status').textContent='Search unavailable. Try refreshing.';}}
-    finally{this.loadingVoiceCache=false;if(this.voiceCacheRefreshPending || query!==this.root.querySelector('.recording-search').value.trim())this.loadVoiceCache();}
+    finally{this.loadingVoiceCache=false;this.updateRecordingPagination();if(this.voiceCacheRefreshPending || query!==this.root.querySelector('.recording-search').value.trim() || !applied && requestedPage!==(this.recordingPage || 1))this.loadVoiceCache();}
   }
   async playSavedPhrase(entry) {
     const status=this.root.querySelector('.phrase-message');
@@ -637,6 +654,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
+
+
+
 
 
 

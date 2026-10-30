@@ -41,5 +41,32 @@ class RecordingSearch(unittest.IsolatedAsyncioTestCase):
         for query in [None,123,'x'*201]:
             with self.assertRaises(ValueError):await self.cache.snapshot(query=query)
 
+    async def test_ten_per_page_and_complete_last_page(self):
+        for index in range(23):
+            path=self.cache.path_for(f'{index:064x}','wav')
+            path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(fixtures.audio())
+            path.with_suffix('.wav.json').write_text(json.dumps({'text':f'phrase {index}',
+                'kind':'clip','created':index}),encoding='utf-8')
+        pages=[await self.cache.snapshot(page=page) for page in [1,2,3]]
+        self.assertEqual([len(page['entries']) for page in pages],[10,10,3])
+        self.assertEqual([(page['first'],page['last']) for page in pages],[(1,10),(11,20),(21,23)])
+        self.assertEqual({entry['key'] for page in pages for entry in page['entries']},
+                         {f'{index:064x}' for index in range(23)})
+        self.assertTrue(all(page['page_count']==3 for page in pages))
+        self.assertTrue(all(len(page['palette_entries'])==23 for page in pages))
+        self.assertEqual((await self.cache.snapshot(page=999))['page'],3)
+        found=await self.cache.snapshot(query='phrase 1',page=2)
+        self.assertEqual(found['matched_count'],11);self.assertEqual(len(found['entries']),1)
+        self.assertEqual((found['first'],found['last']),(11,11))
+
+    async def test_empty_page_and_invalid_page_parameters(self):
+        empty=await self.cache.snapshot(page=99)
+        self.assertEqual((empty['page'],empty['page_count'],empty['first'],empty['last']),(1,1,0,0))
+        for page in [0,-1,True,1.5]:
+            with self.assertRaises(ValueError):await self.cache.snapshot(page=page)
+        with self.assertRaises(ValueError):await self.cache.snapshot(page=1,page_size=0)
+
 if __name__=='__main__':unittest.main()
+
+
 
