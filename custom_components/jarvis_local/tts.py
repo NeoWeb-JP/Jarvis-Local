@@ -24,7 +24,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         "voice_cache", VoiceCache(hass.config.path("jarvis_voice_cache"))
     )
     usage = hass.data["jarvis_local"].setdefault("voice_usage", VoiceUsage())
-    async_add_entities([JarvisVoiceManager(entry.entry_id, cache, usage)])
+    async_add_entities([JarvisVoiceManager(entry, cache, usage)])
 
 
 class JarvisVoiceManager(TextToSpeechEntity):
@@ -33,24 +33,31 @@ class JarvisVoiceManager(TextToSpeechEntity):
     _attr_supported_languages = ["en"]
     _attr_default_language = "en"
 
-    def __init__(self, entry_id, cache, usage):
-        self._attr_unique_id = f"{entry_id}_voice_manager"
+    def __init__(self, entry, cache, usage):
+        self._attr_unique_id = f"{entry.entry_id}_voice_manager"
+        self._entry = entry
         self._cache = cache
         self._usage = usage
 
     async def async_get_tts_audio(self, message, language, options):
-        config = self.hass.data.get("jarvis_local", {})
-        primary = config.get("voice_provider_entity", DEFAULT_PROVIDER)
-        fallback = config.get("voice_fallback_entity", DEFAULT_FALLBACK)
+        config = self._entry.options
+        primary = config.get("primary_tts", DEFAULT_PROVIDER)
+        fallback = config.get("fallback_tts", DEFAULT_FALLBACK)
         # Bump these identity strings when the provider's configured voice
         # or model changes, otherwise old speech may be reused.
-        revision = config.get("voice_cache_revision", "v1")
+        revision = config.get("cache_revision", "v1")
         if not isinstance(revision, str) or not revision:
             raise HomeAssistantError("Invalid Jarvis voice-cache revision")
         if not isinstance(primary, str) or not primary.startswith("tts."):
             raise HomeAssistantError("Invalid primary TTS entity")
         if primary == self.entity_id or primary.startswith("tts.jarvis_voice_manager"):
             raise HomeAssistantError("Recursive Jarvis TTS provider")
+        selected_voice = config.get("elevenlabs_voice", "")
+        primary_options = dict(options or {})
+        if selected_voice:
+            primary_options["voice"] = selected_voice
+        if not config.get("cache_enabled", True):
+            _LOGGER.debug("Persistent cache disabled in settings")
         candidates = [primary]
         if isinstance(fallback, str) and fallback.startswith("tts.") and fallback not in candidates:
             candidates.append(fallback)
@@ -60,30 +67,38 @@ class JarvisVoiceManager(TextToSpeechEntity):
             if entity_id == self.entity_id or entity_id.startswith("tts.jarvis_voice_manager"):
                 continue
             try:
-                extension, audio, hit = await self._cache.get_or_generate_audio(
+                provider_options = primary_options if index == 0 else dict(options or {})
+                voice_key = f"{revision}:{selected_voice}" if index == 0 else revision
+                async def request_audio(entity_id=entity_id, provider_options=provider_options):
+                    return await generate_from_existing_tts(
+                        self.hass, provider_entity_id=entity_id,
+                        text=message, language=language, options=provider_options,
+                    )
+                if config.get("cache_enabled", True):
+                    extension, audio, hit = await self._cache.get_or_generate_audio(
                     text=message,
                     provider=entity_id,
-                    voice_id=revision,
+                    voice_id=voice_key,
                     model=entity_id,
                     language=language or "en",
-                    settings=options or {},
-                    generate=lambda entity_id=entity_id: generate_from_existing_tts(
-                        self.hass, provider_entity_id=entity_id,
-                        text=message, language=language, options=options,
-                    ),
-                )
+                    settings=provider_options,
+                    generate=request_audio,
+                    )
+                else:
+                    extension, audio = await request_audio()
+                    hit = False
                 self._usage.record(("elevenlabs_" if index == 0 else "xtts_") + ("cached" if hit else "generated"))
                 _LOGGER.debug("Jarvis TTS cache %s for %s", "hit" if hit else "miss", entity_id)
                 return extension, audio
             except (HomeAssistantError, ValueError, OSError, TimeoutError) as err:
                 _LOGGER.warning("Jarvis TTS provider %s failed: %s", entity_id, err)
                 errors.append(f"{entity_id}: {type(err).__name__}")
-                if index == 0:
+                if index == 0 and config.get("cache_enabled", True) and config.get("category_fallback", True):
                     # Only AFTER primary ElevenLabs generation fails: try an
                     # already-recorded, semantically equivalent approved line.
                     # This never calls a provider or weakens Guest privacy.
                     alternate = await self._cached_primary_alternative(
-                        message, primary, revision, language or "en", options or {},
+                        message, primary, f"{revision}:{selected_voice}", language or "en", primary_options,
                     )
                     if alternate is not None:
                         self._usage.record("elevenlabs_category_cached")
