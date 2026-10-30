@@ -12,11 +12,26 @@ def correct(hass, text, area=None):
         if cleaned.startswith(p):prefix=p;cleaned=cleaned[len(p):];break
     candidate=re.sub(r'\blaunch (?=spotlights?\b)', 'lounge ', cleaned)
     changes=[]
-    comma_free=re.sub(r'(?<=\w),\s*(?=\w)', ' ', candidate)
+    comma_free=re.sub(r'(?<!\d)[,.]+(?!\d)', ' ', candidate)
+    comma_free=re.sub(r'\s+', ' ', comma_free).strip()
     if comma_free != candidate:
         candidate=comma_free
         changes.append('removed punctuation between words')
-    if re.sub(r'(?<=\w),\s*(?=\w)', ' ', cleaned)!=candidate:changes.append('launch spotlight -> lounge spotlight')
+    if candidate != comma_free:changes.append('launch spotlight -> lounge spotlight')
+    rooms,unassigned=inventory(hass)
+    ids=set(unassigned) | {i for r in rooms.values() for i in r['lights']}
+    registry=er.async_get(hass)
+    names={}
+    for entity in ids:
+        state=hass.states.get(entity)
+        entry=registry.async_get(entity)
+        if state is None:continue
+        for alias in text_aliases(state.name) | text_aliases(entry.aliases if entry else None):
+            names.setdefault(alias,set()).add(entity)
+    joined=split_joined(candidate,names)
+    if joined != candidate:
+        candidate=joined
+        changes.append('separated exact light name and action')
     if re.search(r'\bof$', candidate):
         candidate=re.sub(r'\bof$', 'off', candidate)
         changes.append('trailing of -> off')
@@ -42,3 +57,19 @@ def correct(hass, text, area=None):
     if preview or not steps or any(step['kind'] not in {'light','switch_light'} or step['name'] not in {'turn_on','turn_off'} for step in steps):
         return text,[]
     return prefix+candidate,changes
+
+
+def split_joined(text, names):
+    """Split only a complete on/off command with one exact inventory name."""
+    # Cancellation, corrections and compound requests must retain their meaning.
+    if re.search(r"\b(?:no|not|never|stop|actually|cancel|don\x27t|do not|and|then|but|or)\b", text):
+        return text
+    matches=set()
+    for alias, ids in names.items():
+        if len(ids) != 1:
+            continue
+        pattern=r"((?:please )?(?:(?:turn|switch) )?(?:the )?)"+re.escape(alias)+r"(on|off)( please)?"
+        match=re.fullmatch(pattern,text)
+        if match:
+            matches.add(match[1]+alias+" "+match[2]+(match[3] or ""))
+    return next(iter(matches)) if len(matches)==1 else text
