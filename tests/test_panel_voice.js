@@ -10,7 +10,7 @@ panel.root={querySelector:s=>elements[s]};panel.config={agent_id:'conversation.j
 const packets=[];panel._hass={connection:{socket:{send:p=>packets.push([...p])}},hassUrl:s=>s};
 const lines=[];panel.line=(who,text)=>lines.push([who,text]);const tracked=[];panel.trackCommand=text=>tracked.push(text);panel.loadInfo=()=>{};
 const overview={'.voice-pipeline':{value:'bridge'},'.overview-pipeline':{},'.overview-stt':{}};
-const originalRoot=panel.root;panel.root={querySelector:k=>overview[k]};panel.voicePipelines=[{id:'bridge',name:'Jarvis',stt_engine:'stt.jarvis_voice_bridge_test'}];panel.updateOverview();assert.equal(overview['.overview-stt'].textContent,'Speech-to-text: Jarvis Voice Bridge (configured)');panel.root=originalRoot;
+const originalRoot=panel.root;panel.root={querySelector:k=>overview[k]};panel.voicePipelines=[{id:'bridge',name:'Jarvis',stt_engine:'stt.jarvis_voice_bridge_test'}];panel.updateOverview();assert.equal(overview['.overview-stt'].textContent,'Speech-to-text: Voice Bridge (configured)');panel.root=originalRoot;
 const session={handler:null,ready:false,recording:true,ended:false,context:{state:'closed'},buffer:[new Int16Array([123])],unsub:()=>{session.unsubscribed=true}};
 panel.voiceSession=session;panel.busy=true;
 panel.voiceEvent(session,{type:'run-start',data:{runner_data:{stt_binary_handler_id:4}}});
@@ -20,7 +20,7 @@ panel.stopVoice(false);assert.deepStrictEqual(packets[1],[4]);assert.equal(sessi
 panel.voiceEvent(session,{type:'stt-end',data:{stt_output:{text:'lamp on'}}});
 panel.voiceEvent(session,{type:'intent-end',data:{intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done'}}}}}});
 assert.deepStrictEqual(tracked,[]);
-assert.equal(panel.conversationId,'abc');assert.deepStrictEqual(lines,[['You','lamp on'],['Jarvis','Done']]);
+assert.equal(panel.conversationId,'abc');assert.deepStrictEqual(lines,[['You','lamp on'],['Declan','Done']]);
 panel.voiceEvent(session,{type:'intent-end',data:{processed_locally:true,intent_output:{conversation_id:'abc',response:{speech:{plain:{speech:'Done'}}}}}});
 assert.deepStrictEqual(tracked,[]);assert.equal(lines.some(line=>line[0]==='Routing'),false);
 panel.debugEnabled=true;
@@ -31,3 +31,6 @@ assert.equal(lines.at(-2)[0],'Routing');assert.match(lines.at(-2)[1],/may have m
 panel.voiceEvent(session,{type:'tts-end',data:{tts_output:{url:'/api/tts_proxy/token'}}});assert.equal(elements['.replay-voice'].hidden,false);
 panel.voiceEvent(session,{type:'run-end'});assert.equal(panel.voiceSession,null);assert.equal(session.unsubscribed,true);assert.equal(panel.busy,false);
 console.log('Panel voice pipeline simulation passed.');
+
+
+

@@ -58,8 +58,11 @@ class VoiceCache:
             if not await asyncio.to_thread(write):
                 self.skipped_writes += 1
 
-    async def snapshot(self, limit=200):
+    async def snapshot(self, limit=200, query=''):
         """Private administrator inventory; old files remain readable."""
+        if not isinstance(query,str) or len(query)>200:
+            raise ValueError('Search must be at most 200 characters')
+        query=query.strip().casefold()
         def scan():
             parent = self.directory
             while not parent.exists():parent = parent.parent
@@ -78,7 +81,11 @@ class VoiceCache:
                 entries.append({**metadata,'key':path.stem,'extension':path.suffix[1:],
                                 'bytes':path.stat().st_size})
             entries.sort(key=lambda item:item.get('created',0),reverse=True)
-            return {'entries':entries[:limit], 'count':count, 'bytes':used,
+            matches=[entry for entry in entries if not query or query in ' '.join(
+                str(entry.get(field,'')) for field in ('text','kind','provider','voice_id')
+            ).casefold()]
+            return {'entries':matches[:limit], 'palette_entries':entries[:limit],
+                    'matched_count':len(matches), 'query':query, 'count':count, 'bytes':used,
                     'limit_bytes':self.max_bytes, 'free_bytes':free,
                     'reserve_bytes':self.min_free_bytes,
                     'storage_available':used < self.max_bytes and free > self.min_free_bytes,
@@ -244,5 +251,7 @@ class VoiceCache:
             await self._save(path, audio, dict(text=text, provider=provider,
                 voice_id=voice_id, kind="sentence", created=time()))
             self.misses += 1
+
+
 
 

@@ -14,7 +14,8 @@ from homeassistant.exceptions import HomeAssistantError
 
 
 @websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/voice_cache'})
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/voice_cache',
+                                vol.Optional('query',default=''):str})
 @websocket_api.async_response
 async def voice_cache(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
@@ -23,7 +24,9 @@ async def voice_cache(hass,connection,msg):
     if cache is None or manager is None:
         connection.send_error(msg['id'],'not_loaded','Jarvis Voice Manager is not loaded');return
     try:
-        result=await cache.snapshot()
+        result=await cache.snapshot(query=msg.get('query',''))
+    except ValueError as err:
+        connection.send_error(msg['id'],'invalid_search',str(err));return
     except OSError:
         connection.send_error(msg['id'],'storage_error','Could not read voice cache storage');return
     result['usage']=data['voice_usage'].snapshot()
@@ -118,7 +121,7 @@ async def prepare_voice_phrase(hass,connection,msg):
 @callback
 def info(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
-    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.30.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
+    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.31.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/clear_diagnostics'})
@@ -201,6 +204,9 @@ def register(hass):
     for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
                     voice_cache,voice_cache_audio,prepare_voice_phrase,import_voice_clips,
                     preview_voice_sentence]:websocket_api.async_register_command(hass,handler)
+
+
+
 
 
 

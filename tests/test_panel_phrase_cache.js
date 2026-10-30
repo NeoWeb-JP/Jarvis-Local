@@ -19,7 +19,7 @@ const context={HTMLElement:class{},customElements:{get:()=>false,define:(_,cls)=
 vm.runInNewContext(fs.readFileSync('custom_components/jarvis_local/panel.js','utf8'),context);
 const panel=new Panel();
 const elements={};
-for(const name of ['voice-cache-summary','voice-cache-source','phrase-suggestions','voice-cache-entries','phrase-text','phrase-kind','prepare-phrase','phrase-message','phrase-player','clip-import-message','clip-import-preview','clip-pack-info','clip-confirm','import-clips','sentence-tokens','sentence-text','preview-sentence','undo-sentence','clear-sentence','sentence-status','sentence-player','sentence-pause','recording-options'])elements['.'+name]=new Element();
+for(const name of ['voice-cache-summary','voice-cache-source','phrase-suggestions','voice-cache-entries','phrase-text','phrase-kind','prepare-phrase','phrase-message','phrase-player','clip-import-message','clip-import-preview','clip-pack-info','clip-confirm','import-clips','sentence-tokens','sentence-text','preview-sentence','undo-sentence','clear-sentence','sentence-status','sentence-player','sentence-pause','recording-options','recording-search','recording-search-status'])elements['.'+name]=new Element();
 elements['.sentence-pause'].value='20';
 panel.root={querySelector:key=>elements[key]};
 const requests=[];
@@ -31,7 +31,7 @@ const data={count:1,bytes:2048,limit_bytes:268435456,free_bytes:50000000000,
   entries:[{text:'<img src=x onerror=alert(1)>',kind:'clip',bytes:2048,provider:'tts.elevenlabs',voice_id:'declan',key:'a'.repeat(64),extension:'wav'}]};
 panel._hass={callWS:async request=>{
   requests.push(request);
-  if(request.type==='jarvis_local/voice_cache')return data;
+  if(request.type==='jarvis_local/voice_cache')return request.query?{...data,entries:[],matched_count:0,palette_entries:data.entries}:data;
   if(request.type==='jarvis_local/prepare_voice_phrase')return {cached:false};
   if(request.type==='jarvis_local/voice_cache_audio')return {audio:Buffer.from('audio').toString('base64'),extension:'wav'};
   if(request.type==='jarvis_local/import_voice_clips')return {imported:['kitchen.'],existing:[],not_saved:[]};
@@ -68,7 +68,7 @@ panel._hass={callWS:async request=>{
   assert.equal(elements['.import-clips'].disabled,false);
   assert.equal(requests.filter(x=>x.type==='jarvis_local/prepare_voice_phrase').length,1,'Import must never request TTS');
   await panel.loadClipFiles([{name:'unknown.json',size:20,text:async()=>'{"schema":999}'}]);
-  assert.equal(panel.pendingClips.length,0);assert.match(elements['.clip-import-message'].textContent,/Not a Jarvis/);
+  assert.equal(panel.pendingClips.length,0);assert.match(elements['.clip-import-message'].textContent,/Not a supported/);
   panel.sentenceParts=[];panel.sentenceChanged();
   panel.addSentencePart('Playing');panel.addSentencePart('country');panel.addSentencePart('kitchen.');
   assert.equal(elements['.sentence-text'].textContent,'Playing country kitchen.');
@@ -93,12 +93,31 @@ panel._hass={callWS:async request=>{
   while(panel.sentenceParts.length<8)panel.addSentencePart('in');
   panel.addSentencePart('extra');assert.equal(panel.sentenceParts.length,8);
   assert.equal(requests.filter(x=>x.type==='jarvis_local/prepare_voice_phrase').length,1,'Sentence building, missing-clip editing and preview must never generate TTS');
+  const sentenceBeforeSearch=panel.sentenceParts.join(' ');
+  elements['.recording-search'].value=' OFFICE ';await panel.loadVoiceCache();
+  assert.equal(requests.filter(x=>x.type==='jarvis_local/voice_cache').at(-1).query,'OFFICE');
+  assert.match(elements['.voice-cache-entries'].children[0].textContent,/No saved recordings match/);
+  assert.match(elements['.recording-search-status'].textContent,/0 matching recordings/);
+  assert.equal(panel.sentenceParts.join(' '),sentenceBeforeSearch);
+  elements['.recording-search'].value='';await panel.loadVoiceCache();
+  assert.equal(elements['.voice-cache-entries'].children[0].children[0].textContent,data.entries[0].text);
+  const normalCall=panel._hass.callWS;let finishSearch;
+  panel._hass.callWS=request=>request.query==='old'?new Promise(resolve=>finishSearch=resolve):normalCall(request);
+  elements['.recording-search'].value='old';const staleSearch=panel.loadVoiceCache();
+  elements['.recording-search'].value='new';await panel.loadVoiceCache();
+  finishSearch({...data,entries:[{...data.entries[0],text:'OUTDATED'}]});await staleSearch;
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(elements['.voice-cache-entries'].children[0].textContent,/new/);
+  assert.equal(panel.sentenceParts.join(' '),sentenceBeforeSearch);
+  elements['.recording-search'].value='';
   panel._hass.callWS=async()=>{throw new Error('Storage unavailable');};
   await panel.preparePhrase();assert.match(elements['.phrase-message'].textContent,/Storage unavailable/);
   assert.equal(elements['.prepare-phrase'].disabled,false);
   await panel.loadVoiceCache();assert.match(elements['.voice-cache-summary'].textContent,/Could not load/);
   console.log('Phrase cache interactions passed.');
 })().catch(err=>{console.error(err);process.exitCode=1;});
+
+
 
 
 

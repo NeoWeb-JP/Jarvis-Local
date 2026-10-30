@@ -1,5 +1,20 @@
 # Reusable voice phrases (0.28.0)
 
+## Saved recording search and Declan labels (0.31.0)
+
+The sidebar now uses **Declan** for its assistant headings, chat speaker labels,
+settings and playback prompts. Existing integration identifiers, entity IDs,
+recording contents and voice settings are preserved.
+
+Use **Search saved recordings** immediately above the recording cards to filter
+by phrase text, recording type, provider or voice identity. Search ignores case
+and covers the full cache, including older recordings beyond the first 200
+normally shown. **Clear search** returns to the latest recordings. The count
+shows how many matches were found; at most 200 matching cards are displayed.
+Searching does not change the sentence-builder palette or selected clips, request
+speech generation, or modify saved audio. Results from an older search cannot
+replace a newer query's results.
+
 ## Interactive sentence builder (0.30.0)
 
 Open **Voice cache → Build a sentence** and tap words or phrases to append them.
@@ -145,6 +160,8 @@ Main has been updated without a PR, following the owner's preference. No live
 HA deployment, restart, pipeline change, paid pre-generation or Proxmox storage
 change is part of this implementation. After deployment, test one phrase in the
 screen, listen to its preview, then test the manager in your Assist pipeline.
+
+
 
 
 
