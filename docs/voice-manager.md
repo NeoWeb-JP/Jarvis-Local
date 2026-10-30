@@ -63,3 +63,30 @@ A proper settings UI for this value is still required.
 
 All changes currently sit on `main`, per owner preference. The owner
 controls releases. No production Home Assistant deployment was performed.
+
+
+## Preferred voice consistency (category fallback)
+
+When ElevenLabs is unavailable, Jarvis now attempts this order:
+
+1. Exact cached ElevenLabs audio (including when ElevenLabs is offline).
+2. If exact generation fails: a **previously cached ElevenLabs line in the same approved personality response category** (same action, same Guest/Home privacy pool).
+3. Existing local XTTS TTS entity for the original requested text.
+4. Report TTS failure if no provider works.
+
+Only exact entries in `responses.json` are eligible for alternate wording.
+The implementation currently recognises `general`, `on`, `off`,
+`brightness` and `morning`; Home uses Sassy+Savage,
+Guest uses Guest alone. The candidate must already exist in the persistent
+ElevenLabs cache, with matching provider, revision, language and settings.
+No paid request is made to generate an alternate when ElevenLabs is down.
+This may not cover phonetic-script transformations or future unified persona
+catalogues until they are integrated.
+
+**Never substitute** dynamic weather, temperature, time, status details,
+security/error messages, or unknown text. A cached light-on reply cannot
+replace a light-off confirmation. The actual audio can differ from the
+original TTS-request text for approved category alternates; this should be
+reviewed before production rollout.
+
+These paths require unit and end-to-end playback tests before deployment.
