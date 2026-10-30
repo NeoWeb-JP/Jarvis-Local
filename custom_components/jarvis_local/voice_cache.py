@@ -157,3 +157,22 @@ class VoiceCache:
             await asyncio.to_thread(store)
             self.misses += 1
             return ext, audio, False
+
+    async def find_cached_audio(
+        self, *, text: str, provider: str, voice_id: str, model: str,
+        language: str = "en", settings: dict | None = None,
+    ) -> tuple[str, bytes] | None:
+        """Read ONLY an existing recording without invoking a TTS provider."""
+        for ext in ("mp3", "wav", "ogg", "flac"):
+            key = self.key(
+                text=text, provider=provider, voice_id=voice_id, model=model,
+                language=language, settings=settings, extension=ext,
+            )
+            try:
+                audio = await asyncio.to_thread(self.path_for(key, ext).read_bytes)
+            except FileNotFoundError:
+                continue
+            if audio:
+                self.hits += 1
+                return ext, audio
+        return None
