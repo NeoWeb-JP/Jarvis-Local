@@ -12,12 +12,12 @@ def correct(hass, text, area=None):
         if cleaned.startswith(p):prefix=p;cleaned=cleaned[len(p):];break
     candidate=re.sub(r'\blaunch (?=spotlights?\b)', 'lounge ', cleaned)
     changes=[]
+    if candidate != cleaned:changes.append('launch spotlight -> lounge spotlight')
     comma_free=re.sub(r'(?<!\d)[,.]+(?!\d)', ' ', candidate)
     comma_free=re.sub(r'\s+', ' ', comma_free).strip()
     if comma_free != candidate:
         candidate=comma_free
         changes.append('removed punctuation between words')
-    if candidate != comma_free:changes.append('launch spotlight -> lounge spotlight')
     rooms,unassigned=inventory(hass)
     ids=set(unassigned) | {i for r in rooms.values() for i in r['lights']}
     registry=er.async_get(hass)
@@ -29,7 +29,11 @@ def correct(hass, text, area=None):
         for alias in text_aliases(state.name) | text_aliases(entry.aliases if entry else None):
             names.setdefault(alias,set()).add(entity)
     joined=split_joined(candidate,names)
+    joined_ids=set()
     if joined != candidate:
+        for alias, entity_ids in names.items():
+            if re.fullmatch(r'(?:please )?(?:(?:turn|switch) )?(?:the )?'+re.escape(alias)+r'(?:on|off)(?: please)?',candidate):
+                joined_ids.update(entity_ids)
         candidate=joined
         changes.append('separated exact light name and action')
     if re.search(r'\bof$', candidate):
@@ -55,6 +59,8 @@ def correct(hass, text, area=None):
         steps,preview=plan(hass,apply_room(candidate,area,hass),area)
     except ValueError:return text,[]
     if preview or not steps or any(step['kind'] not in {'light','switch_light'} or step['name'] not in {'turn_on','turn_off'} for step in steps):
+        return text,[]
+    if joined_ids and {entity for step in steps for entity in step.get('data',{}).get('entity_id',[])} != joined_ids:
         return text,[]
     return prefix+candidate,changes
 
