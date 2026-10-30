@@ -176,3 +176,38 @@ class VoiceCache:
                 self.hits += 1
                 return ext, audio
         return None
+
+    async def store_audio(
+        self, *, text: str, provider: str, voice_id: str, model: str,
+        extension: str, audio: bytes, language: str = "en",
+        settings: dict | None = None,
+    ) -> None:
+        """Replace a saved recording with newly generated provider audio."""
+        if extension not in {"mp3", "wav", "ogg", "flac"}:
+            raise ValueError("Unsupported TTS audio format")
+        if not isinstance(audio, bytes) or not audio:
+            raise ValueError("TTS provider returned empty or invalid audio")
+        identity = self.key(
+            text=text, provider=provider, voice_id=voice_id, model=model,
+            language=language, settings=settings, extension="wav",
+        )
+        key = self.key(
+            text=text, provider=provider, voice_id=voice_id, model=model,
+            language=language, settings=settings, extension=extension,
+        )
+        path = self.path_for(key, extension)
+        async with self._locks[identity]:
+            def write():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                fd, tmp = tempfile.mkstemp(prefix=".jarvis-", dir=path.parent)
+                try:
+                    with os.fdopen(fd, "wb") as stream:
+                        stream.write(audio)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    os.replace(tmp, path)
+                finally:
+                    if os.path.exists(tmp):
+                        os.unlink(tmp)
+            await asyncio.to_thread(write)
+            self.misses += 1
