@@ -63,6 +63,20 @@ class JarvisVoiceManager(TextToSpeechEntity):
             raise ValueError('Voice settings changed; refresh the voice cache before previewing')
         return await self._phrases.preview(parts,self.import_identity(),gap_ms)
 
+    async def save_sentence(self, parts, voice_token, gap_ms=20):
+        if voice_token != self.import_token():
+            raise ValueError('Voice settings changed; refresh before saving')
+        if not self._entry.options.get('cache_enabled',True):
+            raise ValueError('Enable the voice cache before saving sentences')
+        identity=self.import_identity()
+        async def generate(text):
+            return await generate_from_existing_tts(self.hass,provider_entity_id=identity['provider'],
+                text=text,language=identity['language'],options=identity['settings'])
+        result=await self._phrases.save_sentence(parts,identity,generate,gap_ms)
+        self._usage.record('elevenlabs_phrase_generated' if result['generated_clips'] else 'elevenlabs_phrase_cached')
+        self._usage.record_clips(result['generated_clips'])
+        return result
+
     async def import_clips(self, clips, voice_token):
         if not self._entry.options.get('cache_enabled',True):
             raise ValueError('Enable the voice cache before importing recordings')
@@ -215,6 +229,8 @@ class JarvisVoiceManager(TextToSpeechEntity):
                 )
                 return cached
         return None
+
+
 
 
 

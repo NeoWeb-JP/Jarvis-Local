@@ -117,14 +117,36 @@ class PhraseLibrary:
     def clip_identity(identity):
         return {**identity, 'model':identity['model']+':'+ASSEMBLY_VERSION+':clip'}
 
-    async def preview(self, parts, identity, gap_ms=20):
-        """Read-only composition: no providers, persistence or household actions."""
+    @staticmethod
+    def validate_sentence(parts, gap_ms):
         if not isinstance(parts,list) or not 1 <= len(parts) <= 8:
             raise ValueError('Choose between 1 and 8 clips')
         if type(gap_ms) is not int or not 0 <= gap_ms <= 500:
             raise ValueError('Pause must be between 0 and 500 milliseconds')
         if any(not isinstance(p,str) or not 1 <= len(p.strip()) <= 200 for p in parts):
             raise ValueError('Invalid clip text')
+
+    async def save_sentence(self, parts, identity, generate, gap_ms=20):
+        """Generate only missing clips, then save exact text for normal TTS reuse."""
+        self.validate_sentence(parts,gap_ms)
+        state=await self.cache.snapshot(limit=0)
+        if not state['storage_available']:
+            raise ValueError('Cache storage is full; no generation requested')
+        clips=[];generated=0
+        for part in parts:
+            _,audio,hit=await self.clip(part,identity,generate)
+            generated+=not hit
+            clips.append(audio)
+        audio=join_clips(clips,gap_ms)
+        text=' '.join(part.strip() for part in parts)
+        saved=await self.cache.store_audio(text=text,**identity,extension='wav',audio=audio,
+                                          kind='built_sentence',parts=[p.strip() for p in parts],gap_ms=gap_ms)
+        return {'text':text,'saved':saved,'generated_clips':generated,
+                'reused_clips':len(parts)-generated,'bytes':len(audio)}
+
+    async def preview(self, parts, identity, gap_ms=20):
+        """Read-only composition: no providers, persistence or household actions."""
+        self.validate_sentence(parts,gap_ms)
         clips=[];missing=[]
         for part in parts:
             text=part.strip().casefold()
@@ -197,6 +219,8 @@ class PhraseLibrary:
             text=message, **composed_identity, generate=create, kind="assembled",
         )
         return extension, audio, hit, generated
+
+
 
 
 

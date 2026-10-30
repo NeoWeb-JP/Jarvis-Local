@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.31.0';
+      this.root.querySelector('.connection').textContent='v0.32.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -32,24 +32,18 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 <form><input aria-label="Message to Declan" placeholder="Ask Declan anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Declan">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Declan reply</button>
 <details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant that uses this conversation agent. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
 <details class="voice-cache-section"><summary>Voice cache</summary>
-<small>Saved speech stays in Home Assistant. Prepare reusable clips or a whole sentence for more natural speech. Preparing missing audio uses your configured ElevenLabs provider and may use credits.</small>
+<small>Build and save reusable speech in Home Assistant. Saving requests only missing clips from your configured provider and may use credits.</small>
 <div class="tools"><button type="button" class="refresh-voice-cache">Refresh voice cache</button></div>
 <p class="voice-cache-summary" role="status">Open to load saved speech.</p><small class="voice-cache-source"></small>
 <h3>Build a sentence</h3><small>Tap words or phrases below to add them in order. Solid buttons have a saved clip for this voice; dashed buttons may need recording. Up to 8 clips per sentence.</small>
 <div class="tools phrase-suggestions" aria-label="Words and phrases for sentence builder"></div>
-<div class="sentence-box"><div class="sentence-tokens" aria-label="Selected sentence clips"></div>
+<div class="sentence-box"><label>Add a word or phrase <input class="sentence-new-part" aria-label="Word or phrase to add" maxlength="200" placeholder="e.g. jazz"></label> <button type="button" class="add-sentence-part">Add to sentence</button><small>Use saved clips below, or type a new word or phrase here. Missing clips are requested from your speech provider when you save.</small><div class="sentence-tokens" aria-label="Selected sentence clips"></div>
 <output class="sentence-text" aria-label="Built sentence"></output>
 <label class="sentence-gap">Pause between clips <input class="sentence-pause" type="range" min="0" max="500" step="10" value="20" aria-label="Pause between clips"><span class="sentence-pause-value">20 ms</span></label>
-<div class="tools"><button type="button" class="preview-sentence">Preview sentence</button><button type="button" class="undo-sentence">Undo last</button><button type="button" class="clear-sentence">Clear sentence</button><button type="button" class="example-sentence">Try an example</button></div>
-<small class="sentence-status" role="status">Preview plays on this device using saved clips only. No ElevenLabs requests or household actions.</small>
+<div class="tools"><button type="button" class="preview-sentence">Preview saved clips</button><button type="button" class="save-sentence">Save sentence</button><button type="button" class="undo-sentence">Undo last</button><button type="button" class="clear-sentence">Clear sentence</button><button type="button" class="example-sentence">Try an example</button></div>
+<small class="sentence-status" role="status">Preview uses saved clips only. Save generates missing clips and saves the joined sentence; missing audio may use ElevenLabs credits. Saving replaces any recording with the same sentence text and voice.</small>
 <audio class="sentence-player" controls hidden aria-label="Built sentence preview"></audio></div>
-<details class="recording-options"><summary>Save a new recording</summary>
-<label>Phrase <input class="phrase-text" aria-label="Phrase to save" maxlength="200" placeholder="country"></label>
-<label>Save as <select class="phrase-kind" aria-label="Phrase type"><option value="clip">Reusable clip</option><option value="sentence">Whole sentence</option></select></label>
-<button type="button" class="prepare-phrase">Prepare and save phrase</button>
-<small>Preparing missing audio uses your configured provider and may use credits. Room clips end with a full stop, for example kitchen.</small>
-</details>
-<small class="phrase-message" role="status"></small><audio class="phrase-player" controls hidden aria-label="Saved phrase preview"></audio>
+<small class="phrase-message" role="status"></small><audio class="phrase-player" controls hidden aria-label="Saved recording preview"></audio>
 <details class="clip-import-section"><summary>Import recordings</summary>
 <small>Choose room MP3s or a phrase pack. Check the phrase labels before importing. Room clips need a final full stop, such as kitchen. Existing saved clips are kept. This does not contact ElevenLabs.</small>
 <label>Recordings <input class="clip-files" aria-label="Recordings to import" type="file" accept=".mp3,.wav,.ogg,.flac,.json" multiple></label>
@@ -72,7 +66,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.refresh-voice-cache').onclick=()=>this.loadVoiceCache();
     this.root.querySelector('.recording-search').oninput=()=>{clearTimeout(this.recordingSearchTimer);this.root.querySelector('.recording-search-status').textContent='Searching saved recordings…';this.recordingSearchTimer=setTimeout(()=>this.loadVoiceCache(),200);};
     this.root.querySelector('.clear-recording-search').onclick=()=>{clearTimeout(this.recordingSearchTimer);this.root.querySelector('.recording-search').value='';this.loadVoiceCache();};
-    this.root.querySelector('.prepare-phrase').onclick=()=>this.preparePhrase();
+    this.root.querySelector('.save-sentence').onclick=()=>this.saveSentence();
+    this.root.querySelector('.add-sentence-part').onclick=()=>this.addTypedSentencePart();
+    this.root.querySelector('.sentence-new-part').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();this.addTypedSentencePart();}};
     this.root.querySelector('.preview-sentence').onclick=()=>this.previewSentence();
     this.root.querySelector('.undo-sentence').onclick=()=>{this.sentenceParts=(this.sentenceParts || []).slice(0,-1);this.sentenceChanged();};
     this.root.querySelector('.clear-sentence').onclick=()=>{this.sentenceParts=[];this.sentenceChanged();};
@@ -113,7 +109,29 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
   sentenceChanged() {
     this.invalidateSentencePreview();this.sentenceMissing=[];this.renderSentence();
-    this.root.querySelector('.sentence-status').textContent='Ready to preview saved clips. No speech will be generated.';
+    this.root.querySelector('.sentence-status').textContent='Preview saved clips, or save the sentence to request missing recordings and keep it for reuse.';
+  }
+  addTypedSentencePart() {
+    const input=this.root.querySelector('.sentence-new-part'),text=input.value.trim();
+    if(!text){this.root.querySelector('.sentence-status').textContent='Type a word or phrase first.';return;}
+    if(text.length>200){this.root.querySelector('.sentence-status').textContent='Use at most 200 characters per clip.';return;}
+    if((this.sentenceParts || []).length>=8){this.root.querySelector('.sentence-status').textContent='Use at most 8 clips. Remove one before adding another.';return;}
+    this.addSentencePart(text);input.value='';input.focus();
+  }
+  async saveSentence() {
+    if(this.savingSentence || this.previewingSentence || !this.sentenceParts?.length)return;
+    const status=this.root.querySelector('.sentence-status');
+    if(!this.voiceCacheData?.import_voice_token){status.textContent='Refresh the voice cache before saving.';return;}
+    const revision=this.sentenceRevision || 0,parts=[...this.sentenceParts];
+    this.savingSentence=true;this.renderSentence();status.textContent='Reusing saved clips, requesting missing audio and saving your sentence…';
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/save_voice_sentence',parts,voice_token:this.voiceCacheData.import_voice_token,gap_ms:Number(this.root.querySelector('.sentence-pause').value)});
+      await this.loadVoiceCache();
+      const message=result.saved?'Saved “'+result.text+'” for reuse. '+result.reused_clips+' clips reused; '+result.generated_clips+' missing clips requested.':'Sentence audio was prepared but could not be saved because storage filled up. Saved clips are kept for retry.';
+      status.textContent=(revision!==(this.sentenceRevision || 0)?'For your earlier sentence: ':'')+message;
+      if(revision===(this.sentenceRevision || 0)){this.sentenceMissing=[];this.renderSentence();}
+    } catch(e){status.textContent='Could not save sentence: '+(e.message || String(e));}
+    finally{this.savingSentence=false;this.renderSentence();}
   }
   addSentencePart(text) {
     if((this.sentenceParts || []).length>=8){this.root.querySelector('.sentence-status').textContent='Use at most 8 clips. Remove a clip before adding another.';return;}
@@ -123,10 +141,11 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const parts=this.sentenceParts || [];
     const container=this.root.querySelector('.sentence-tokens');container.replaceChildren();
     this.root.querySelector('.sentence-text').textContent=parts.join(' ');
-    this.root.querySelector('.preview-sentence').disabled=!parts.length || !!this.previewingSentence;
+    this.root.querySelector('.preview-sentence').disabled=!parts.length || !!this.previewingSentence || !!this.savingSentence;
+    this.root.querySelector('.save-sentence').disabled=!parts.length || !!this.savingSentence || !!this.previewingSentence;
     this.root.querySelector('.undo-sentence').disabled=!parts.length;
     this.root.querySelector('.clear-sentence').disabled=!parts.length;
-    if(!parts.length){const empty=document.createElement('span');empty.className='sentence-empty';empty.textContent='Choose clips below or try an example.';container.append(empty);}
+    if(!parts.length){const empty=document.createElement('span');empty.className='sentence-empty';empty.textContent='Choose clips below, type a new phrase, or try an example.';container.append(empty);}
     parts.forEach((text,index)=>{
       const row=document.createElement('span');row.className='sentence-piece';
       const missing=(this.sentenceMissing || []).includes(text.trim().toLowerCase());
@@ -137,12 +156,12 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       control('←','Move '+text+' earlier',()=>move(-1),index===0);
       control('→','Move '+text+' later',()=>move(1),index===parts.length-1);
       control('×','Remove clip '+(index+1)+': '+text,()=>{this.sentenceParts=this.sentenceParts.filter((_,i)=>i!==index);this.sentenceChanged();});
-      if(missing)control('Record clip','Prepare a recording for '+text,()=>{this.root.querySelector('.recording-options').open=true;this.root.querySelector('.phrase-text').value=text;this.root.querySelector('.phrase-kind').value='clip';this.root.querySelector('.phrase-text').focus();});
+
       container.append(row);
     });
   }
   async previewSentence() {
-    if(this.previewingSentence || !this.sentenceParts?.length)return;
+    if(this.previewingSentence || this.savingSentence || !this.sentenceParts?.length)return;
     const status=this.root.querySelector('.sentence-status');
     if(!this.voiceCacheData?.import_voice_token){status.textContent='Refresh the voice cache before previewing.';return;}
     const revision=this.sentenceRevision || 0;
@@ -151,7 +170,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       const result=await this._hass.callWS({type:'jarvis_local/preview_voice_sentence',parts:[...this.sentenceParts],voice_token:this.voiceCacheData.import_voice_token,gap_ms:Number(this.root.querySelector('.sentence-pause').value)});
       if(revision!==(this.sentenceRevision || 0))return;
       this.sentenceMissing=result.missing || [];this.renderSentence();
-      if(this.sentenceMissing.length){status.textContent='No preview played. Missing recordings: '+this.sentenceMissing.join(', ')+'. Use Record clip to fill the recording field; generation requires Prepare and save phrase.';return;}
+      if(this.sentenceMissing.length){status.textContent='No preview played. Missing recordings: '+this.sentenceMissing.join(', ')+'. Save sentence will request only the missing clips.';return;}
       if(result.extension!=='wav' || !result.audio)throw new Error('Invalid preview audio');
       const bytes=Uint8Array.from(atob(result.audio),c=>c.charCodeAt(0));
       const player=this.root.querySelector('.sentence-player');player.pause();
@@ -255,30 +274,23 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       const entries=this.root.querySelector('.voice-cache-entries');entries.replaceChildren();
       const matched=data.matched_count ?? data.count;
       this.root.querySelector('.recording-search-status').textContent=query?'Showing '+(data.entries || []).length+' of '+matched+' matching recordings.':'Showing '+(data.entries || []).length+' of '+data.count+' recordings.';
-      if(!(data.entries || []).length){const p=document.createElement('p');p.textContent=query?'No saved recordings match “'+query+'”.':'No saved recordings yet. Prepare or import a recording to get started.';entries.append(p);}
+      if(!(data.entries || []).length){const p=document.createElement('p');p.textContent=query?'No saved recordings match “'+query+'”.':'No saved recordings yet. Build and save a sentence, or import recordings to get started.';entries.append(p);}
       for(const entry of data.entries || []) {
         const row=document.createElement('div');row.className='diag-card';
         const title=document.createElement('p');title.textContent=entry.text;
         const detail=document.createElement('small');detail.textContent=(entry.kind || 'sentence')+' · '+(entry.bytes/1024).toFixed(1)+' KB · '+(entry.provider || 'older recording')+' · '+(entry.voice_id || 'voice unavailable');
         const play=document.createElement('button');play.type='button';play.textContent='Play';play.setAttribute('aria-label','Play '+entry.text);play.onclick=()=>this.playSavedPhrase(entry);
-        row.append(title,detail,play);entries.append(row);
+        row.append(title,detail,play);
+        if(entry.kind==='built_sentence' && Array.isArray(entry.parts) && entry.parts.length<=8){
+          const edit=document.createElement('button');edit.type='button';edit.textContent='Edit sentence';
+          edit.onclick=()=>{this.sentenceParts=[...entry.parts];const gap=entry.gap_ms ?? 20;this.root.querySelector('.sentence-pause').value=String(gap);this.root.querySelector('.sentence-pause-value').textContent=gap+' ms';this.sentenceChanged();this.root.querySelector('.sentence-box')?.scrollIntoView?.({behavior:'smooth',block:'center'});};
+          row.append(edit);
+        }
+        entries.append(row);
       }
       if(matched>(data.entries || []).length){const p=document.createElement('small');p.textContent='Showing the newest '+data.entries.length+' matches. Refine your search to find older recordings.';entries.append(p);}
     } catch(e){if(query===this.root.querySelector('.recording-search').value.trim()){summary.textContent='Could not load voice cache: '+(e.message || String(e));this.root.querySelector('.recording-search-status').textContent='Search unavailable. Try refreshing.';}}
     finally{this.loadingVoiceCache=false;if(this.voiceCacheRefreshPending || query!==this.root.querySelector('.recording-search').value.trim())this.loadVoiceCache();}
-  }
-  async preparePhrase() {
-    const button=this.root.querySelector('.prepare-phrase');if(button.disabled)return;
-    const text=this.root.querySelector('.phrase-text').value.trim();
-    const status=this.root.querySelector('.phrase-message');
-    if(!text){status.textContent='Enter a phrase first.';return;}
-    button.disabled=true;status.textContent='Preparing speech…';
-    try {
-      const result=await this._hass.callWS({type:'jarvis_local/prepare_voice_phrase',text,kind:this.root.querySelector('.phrase-kind').value});
-      status.textContent=result.saved===false?'Audio was prepared but storage filled up before it could be saved.':result.cached?'That phrase was already saved.':'Phrase prepared. Check the recordings below to preview it.';
-      await this.loadVoiceCache();
-    } catch(e){status.textContent='Could not prepare phrase: '+(e.message || String(e));}
-    finally{button.disabled=false;}
   }
   async playSavedPhrase(entry) {
     const status=this.root.querySelector('.phrase-message');
@@ -607,6 +619,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
+
+
+
 
 
 

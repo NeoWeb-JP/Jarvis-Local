@@ -131,7 +131,28 @@ class ManagerTests(unittest.IsolatedAsyncioTestCase):
         self.entry.options['elevenlabs_voice']='other'
         with self.assertRaises(ValueError):await self.manager.preview_sentence(['country'],token)
 
+    async def test_saved_sentence_is_reused_by_normal_tts(self):
+        token=self.manager.import_token()
+        result=await self.manager.save_sentence(['I requested','country','in','kitchen.'],token,60)
+        self.assertTrue(result['saved']);self.assertEqual(result['generated_clips'],4)
+        self.calls.clear()
+        extension,recording=await self.manager.async_get_tts_audio('I requested country in kitchen.','en',{})
+        self.assertEqual(extension,'wav');self.assertEqual(self.calls,[])
+        self.assertEqual(len(recording),result['bytes'])
+        await self.manager.save_sentence(['I requested','jazz','in','kitchen.'],token)
+        self.assertEqual(self.calls,[('tts.elevenlabs','jazz')])
+
+    async def test_save_rejects_changed_voice_and_disabled_cache_before_provider(self):
+        token=self.manager.import_token()
+        self.entry.options['elevenlabs_voice']='other'
+        with self.assertRaises(ValueError):await self.manager.save_sentence(['country'],token)
+        self.entry.options['cache_enabled']=False
+        with self.assertRaises(ValueError):await self.manager.save_sentence(['country'],self.manager.import_token())
+        self.assertEqual(self.calls,[])
+
 if __name__=='__main__':unittest.main()
+
+
 
 
 

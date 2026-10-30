@@ -57,6 +57,8 @@ class VoiceCache:
                 return True
             if not await asyncio.to_thread(write):
                 self.skipped_writes += 1
+                return False
+            return True
 
     async def snapshot(self, limit=200, query=''):
         """Private administrator inventory; old files remain readable."""
@@ -231,8 +233,8 @@ class VoiceCache:
     async def store_audio(
         self, *, text: str, provider: str, voice_id: str, model: str,
         extension: str, audio: bytes, language: str = "en",
-        settings: dict | None = None,
-    ) -> None:
+        settings: dict | None = None, kind: str = 'sentence', parts=None, gap_ms=None,
+    ) -> bool:
         """Replace a saved recording with newly generated provider audio."""
         if extension not in {"mp3", "wav", "ogg", "flac"}:
             raise ValueError("Unsupported TTS audio format")
@@ -248,9 +250,23 @@ class VoiceCache:
         )
         path = self.path_for(key, extension)
         async with self._locks[identity]:
-            await self._save(path, audio, dict(text=text, provider=provider,
-                voice_id=voice_id, kind="sentence", created=time()))
+            metadata=dict(text=text,provider=provider,voice_id=voice_id,kind=kind,created=time())
+            if parts is not None:
+                metadata.update(parts=parts,gap_ms=gap_ms)
+            saved=await self._save(path,audio,metadata)
+            if saved:
+                def remove_older_formats():
+                    for ext in {'wav','mp3','ogg','flac'}-{extension}:
+                        old_key=self.key(text=text,provider=provider,voice_id=voice_id,model=model,
+                                         language=language,settings=settings,extension=ext)
+                        old_path=self.path_for(old_key,ext)
+                        old_path.unlink(missing_ok=True)
+                        old_path.with_suffix('.'+ext+'.json').unlink(missing_ok=True)
+                await asyncio.to_thread(remove_older_formats)
             self.misses += 1
+            return saved
+
+
 
 
 

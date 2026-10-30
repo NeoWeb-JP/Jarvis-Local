@@ -42,6 +42,27 @@ async def voice_cache(hass,connection,msg):
 
 
 @websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/save_voice_sentence',
+    vol.Required('parts'):list,vol.Required('voice_token'):str,vol.Optional('gap_ms',default=20):int})
+@websocket_api.async_response
+async def save_voice_sentence(hass,connection,msg):
+    data=hass.data.get('jarvis_local',{})
+    manager=data.get('voice_manager')
+    if manager is None:
+        connection.send_error(msg['id'],'not_loaded','Voice Manager is not loaded');return
+    lock=data.setdefault('phrase_generation_lock',asyncio.Lock())
+    if lock.locked():
+        connection.send_error(msg['id'],'busy','Another phrase operation is running');return
+    try:
+        async with lock:
+            result=await manager.save_sentence(msg['parts'],msg['voice_token'],msg.get('gap_ms',20))
+    except (HomeAssistantError,ValueError,OSError,EOFError,wave.Error,TimeoutError) as err:
+        connection.send_error(msg['id'],'save_failed',str(err) if isinstance(err,ValueError)
+            else 'Could not save the complete sentence. Completed clips are kept; retry to reuse them.');return
+    connection.send_result(msg['id'],result)
+
+
+@websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/preview_voice_sentence',
     vol.Required('parts'):list,vol.Required('voice_token'):str,vol.Optional('gap_ms',default=20):int})
 @websocket_api.async_response
@@ -121,7 +142,7 @@ async def prepare_voice_phrase(hass,connection,msg):
 @callback
 def info(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
-    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.31.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
+    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.32.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/clear_diagnostics'})
@@ -203,7 +224,10 @@ async def check_voice_bridge(hass,connection,msg):
 def register(hass):
     for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
                     voice_cache,voice_cache_audio,prepare_voice_phrase,import_voice_clips,
-                    preview_voice_sentence]:websocket_api.async_register_command(hass,handler)
+                    preview_voice_sentence,save_voice_sentence]:websocket_api.async_register_command(hass,handler)
+
+
+
 
 
 

@@ -1,5 +1,39 @@
 # Reusable voice phrases (0.28.0)
 
+## Build, generate missing clips and save (0.32.0)
+
+The sentence builder is now the recording workflow. Click saved clips or type a
+new word/phrase in **Add a word or phrase**, then select **Add to sentence** (or
+press Enter). Each addition is one reusable clip; text is not automatically split
+into individual words. Arrange up to eight clips and choose the pause.
+
+- **Preview saved clips** plays only existing recordings on your current device.
+  It lists missing clips without requesting speech or running household actions.
+- **Save sentence** reuses matching clips, requests only missing ones from the
+  configured primary TTS provider, joins them and saves the complete sentence.
+  Missing audio may consume ElevenLabs credits. Saving never runs the sentence
+  as a household command and never mixes in a fallback voice.
+- **Edit sentence** on a saved built recording restores its exact clips and pause
+  so you can change and save it again. Saved recordings retain their Play control.
+
+Saving a single added phrase creates both its reusable clip and a saved full
+recording. The old separate recording form is no longer needed. Duplicate clicks
+are coalesced by the UI and concurrent administrator recording operations are
+rejected. Editing the builder during a save does not change the in-flight sentence;
+the result identifies that earlier sentence and preserves your new selections.
+
+The saved sentence is keyed by its exact full text and voice generation identity,
+so the normal Voice Manager TTS path reuses it when that response text matches.
+Saving the same sentence again replaces its prior recording and pause, including
+an older MP3 version, only after the new WAV has been written successfully.
+Different text, voices, revisions, languages or synthesis options remain separate.
+
+Input and storage checks run before generation. If a provider fails midway, valid
+completed clips remain cached for a retry; a partial sentence is never saved.
+If storage fills during the operation, the UI reports that the sentence was not
+saved. The 256 MiB cache limit and 512 MiB free-space reserve still apply.
+Maximum output duration remains 30 seconds.
+
 ## Saved recording search and Declan labels (0.31.0)
 
 The sidebar now uses **Declan** for its assistant headings, chat speaker labels,
@@ -27,7 +61,7 @@ remove individual clips, undo the last addition, or clear the sentence.
 
 **Try an example** builds `Playing country music from Spotify in the kitchen.`
 without playing it or generating speech. Adjust **Pause between clips** from
-0 to 500 milliseconds and select **Preview sentence** to hear one joined audio
+0 to 500 milliseconds and select **Preview saved clips** to hear one joined audio
 file on your current browser/device. Editing the sentence stops playback and
 invalidates any preview still loading.
 
@@ -35,10 +69,10 @@ Preview is read-only: it does not call ElevenLabs, save a new recording, execute
 the sentence, change the Assist pipeline, or play on household speakers. Only
 clips matching the current provider, voice/revision, language and default options
 are eligible. If a clip is missing, the entire preview stops and lists it.
-**Record clip** fills **Save a new recording** with that clip's text; the separate
-**Prepare and save phrase** button is still required to request provider audio.
-Changing the pause is only for this audition and does not change automatic
-music response timing.
+**Save sentence** requests the missing clips and keeps the assembled recording.
+Provider audio is requested only after that explicit action.
+The pause is applied to previews and to sentences explicitly saved from the
+builder. Other automatically assembled music responses retain their default pause.
 
 ## Import your own recordings (0.29.0)
 
@@ -67,11 +101,11 @@ unexpected filesystem error can still prevent some saves; the response reports
 completed and unsaved recordings so you can retry without replacing saved ones.
 Keep private phrase packs out of public GitHub repositories.
 
-Use **Jarvis sidebar → Voice cache** to see saved recordings, preview them on
-your browser, prepare reusable clips and save natural whole sentences.
+Use **Declan sidebar → Voice cache** to build sentences, save reusable clips,
+preview saved audio and manage imported recordings.
 An administrator account is required. Opening the screen, choosing a suggestion,
-refreshing and playing a saved recording never call ElevenLabs. **Prepare and
-save phrase** requests missing audio through your existing primary TTS entity;
+refreshing and playing a saved recording never call ElevenLabs. **Save sentence**
+requests missing audio through your existing primary TTS entity;
 this can consume provider credits. No additional API key is stored by Jarvis.
 
 The Assist pipeline must use **Jarvis Voice Manager** as its text-to-speech
@@ -160,6 +194,8 @@ Main has been updated without a PR, following the owner's preference. No live
 HA deployment, restart, pipeline change, paid pre-generation or Proxmox storage
 change is part of this implementation. After deployment, test one phrase in the
 screen, listen to its preview, then test the manager in your Assist pipeline.
+
+
 
 
 

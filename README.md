@@ -3,8 +3,8 @@
 ### Reusable voice phrases
 
 The **Voice cache** section in the Jarvis sidebar lists saved speech and storage
-usage, lets you preview audio, and prepares reusable genre/room clips or whole
-sentences. With **Jarvis Voice Manager** selected for TTS, music confirmations
+usage, lets you build and preview sentences, generates missing clips on save, and
+keeps the complete sentence for reuse. With **Jarvis Voice Manager** selected for TTS, music confirmations
 reuse those clips and fetch only missing words. Cache storage is capped at
 256 MiB with a 512 MiB free-space reserve. See [the phrase-library guide](docs/phrase-library.md)
 for setup, supported wording and how to verify reuse. Preparing new audio can
@@ -14,8 +14,10 @@ You can also **import your own room MP3s** or a private Jarvis phrase pack in
 **Voice cache → Import recordings**, without generating the clips again.
 
 **Build a sentence** lets you click clips into order, move or remove them, adjust
-the pause, and hear a joined preview on your device. Previews use saved clips
-only and never call ElevenLabs or run household commands.
+the pause, and hear a joined preview on your device. **Save sentence** requests
+only missing clips and saves the full recording. **Edit sentence** restores a
+saved recording in the builder. Previews use saved clips only; no builder action
+runs household commands.
 
 A Home Assistant conversation integration with a sidebar chat interface and rule-based household commands. The conversation agent does not require an LLM. Speech recognition, speech output, music and device integrations use the providers configured in Home Assistant and may use cloud services.
 
@@ -74,5 +76,7 @@ Use **Jarvis settings → Voice profiles** to edit profiles and preview morning 
 Choose an optional weather entity in Jarvis settings. Say “morning briefing” or “evening checks” for the available configured weather, thermostat, car cable and battery readings. These are read-only summaries; unconfigured entities are omitted and unavailable configured readings are reported. They do not include calendar events or light checks. “Good morning” still runs the separate existing routine.
 
 From a supported announcement-capable Assist satellite, say “set a pasta timer for ten minutes”, “how long is left on the pasta timer”, or “cancel the pasta timer”. Each satellite can have up to 20 timers, each with a unique name (and at most one unnamed timer). Ask to add or remove time by name; cancel my timers only affects the current satellite. Existing timers are retained on upgrade. Timers do not start from the sidebar chat.
+
+
 
 
