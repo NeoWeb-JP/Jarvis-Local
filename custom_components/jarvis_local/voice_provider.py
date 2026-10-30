@@ -13,7 +13,6 @@ from homeassistant.exceptions import HomeAssistantError
 async def generate_from_existing_tts(
     hass, *, provider_entity_id: str, text: str,
     language: str | None = None, options: dict | None = None,
-    use_ha_cache: bool = True,
 ) -> tuple[str, bytes]:
     """Fetch provider audio using the supported Home Assistant media-source API."""
     if not provider_entity_id.startswith("tts."):
@@ -24,7 +23,7 @@ async def generate_from_existing_tts(
         raise ValueError("Speech text must not be empty")
     media_source_id = tts.generate_media_source_id(
         hass, text, engine=provider_entity_id, language=language,
-        options=options or {}, cache=use_ha_cache,
+        options=options or {}, cache=True,
     )
     extension, audio = await tts.async_get_media_source_audio(hass, media_source_id)
     if extension not in {"mp3", "wav", "ogg", "flac"}:
