@@ -1,6 +1,6 @@
 {
   "domain": "jarvis_local",
-  "name": "Jarvis Local",
+  "name": "Home Voice Assistant",
   "codeowners": [],
   "config_flow": true,
   "dependencies": [
