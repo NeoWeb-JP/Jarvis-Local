@@ -11,6 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from .voice_cache import VoiceCache
 from .voice_catalog_fallback import category_alternatives, load_catalogue
 from .voice_provider import generate_from_existing_tts
+from .voice_usage import VoiceUsage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,7 +23,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     cache = hass.data.setdefault("jarvis_local", {}).setdefault(
         "voice_cache", VoiceCache(hass.config.path("jarvis_voice_cache"))
     )
-    async_add_entities([JarvisVoiceManager(entry.entry_id, cache)])
+    usage = hass.data["jarvis_local"].setdefault("voice_usage", VoiceUsage())
+    async_add_entities([JarvisVoiceManager(entry.entry_id, cache, usage)])
 
 
 class JarvisVoiceManager(TextToSpeechEntity):
@@ -31,9 +33,10 @@ class JarvisVoiceManager(TextToSpeechEntity):
     _attr_supported_languages = ["en"]
     _attr_default_language = "en"
 
-    def __init__(self, entry_id, cache):
+    def __init__(self, entry_id, cache, usage):
         self._attr_unique_id = f"{entry_id}_voice_manager"
         self._cache = cache
+        self._usage = usage
 
     async def async_get_tts_audio(self, message, language, options):
         config = self.hass.data.get("jarvis_local", {})
@@ -69,6 +72,7 @@ class JarvisVoiceManager(TextToSpeechEntity):
                         text=message, language=language, options=options,
                     ),
                 )
+                self._usage.record(("elevenlabs_" if index == 0 else "xtts_") + ("cached" if hit else "generated"))
                 _LOGGER.debug("Jarvis TTS cache %s for %s", "hit" if hit else "miss", entity_id)
                 return extension, audio
             except (HomeAssistantError, ValueError, OSError, TimeoutError) as err:
@@ -82,6 +86,7 @@ class JarvisVoiceManager(TextToSpeechEntity):
                         message, primary, revision, language or "en", options or {},
                     )
                     if alternate is not None:
+                        self._usage.record("elevenlabs_category_cached")
                         return alternate
 
         raise HomeAssistantError("Jarvis TTS primary and fallback failed: " + "; ".join(errors))
