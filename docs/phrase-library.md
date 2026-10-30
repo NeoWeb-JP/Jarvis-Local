@@ -7,6 +7,11 @@ new word/phrase in **Add a word or phrase**, then select **Add to sentence** (or
 press Enter). Each addition is one reusable clip; text is not automatically split
 into individual words. Arrange up to eight clips and choose the pause.
 
+The button palette is grouped into **Linking phrases**, **Music**, and
+**Zones/Rooms**, with music and rooms sorted alphabetically. Unclassified custom
+recordings appear in **Other saved clips**. Grouping only changes the display;
+it preserves clip text, recordings and room/device behavior.
+
 - **Preview saved clips** plays only existing recordings on your current device.
   It lists missing clips without requesting speech or running household actions.
 - **Save sentence** reuses matching clips, requests only missing ones from the
@@ -194,6 +199,8 @@ Main has been updated without a PR, following the owner's preference. No live
 HA deployment, restart, pipeline change, paid pre-generation or Proxmox storage
 change is part of this implementation. After deployment, test one phrase in the
 screen, listen to its preview, then test the manager in your Assist pipeline.
+
+
 
 
 

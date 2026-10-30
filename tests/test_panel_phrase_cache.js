@@ -43,7 +43,9 @@ panel._hass={callWS:async request=>{
   await panel.loadVoiceCache();
   assert.match(elements['.voice-cache-summary'].textContent,/1 recordings/);
   assert.equal(elements['.voice-cache-entries'].children[0].children[0].textContent,data.entries[0].text);
-  const room=elements['.phrase-suggestions'].children.find(x=>x.textContent==='Kitchen.');
+  const groups=elements['.phrase-suggestions'].children;
+  assert.deepEqual(groups.map(group=>group.children[0].textContent),['Linking phrases','Music','Zones/Rooms']);
+  const room=groups.find(group=>group['aria-label']==='Zones/Rooms').children[1].children.find(x=>x.textContent==='Kitchen.');
   room.onclick();
   assert.equal(panel.sentenceParts.join(' '),'Kitchen.');
   assert.equal(elements['.sentence-text'].textContent,'Kitchen.');
@@ -135,6 +137,8 @@ panel._hass={callWS:async request=>{
   await panel.loadVoiceCache();assert.match(elements['.voice-cache-summary'].textContent,/Could not load/);
   console.log('Phrase cache interactions passed.');
 })().catch(err=>{console.error(err);process.exitCode=1;});
+
+
 
 
 

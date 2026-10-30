@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.32.0';
+      this.root.querySelector('.connection').textContent='v0.32.1';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -25,6 +25,7 @@ button,select,input{font:inherit;color:inherit}button{min-height:44px;border:1px
 ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;padding:24px;border-radius:18px;background:var(--card-background-color)}ha-card[hidden]{display:none}h2{margin:0 0 5px}h3{margin:14px 0 6px;font-size:1rem}small{display:block;color:var(--secondary-text-color);margin:6px 0;font-size:.85rem}.connection{margin:0}.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.status{font-size:.85rem;color:var(--secondary-text-color)}.history{min-height:280px;max-height:54vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:18px 0;white-space:pre-wrap}.history:empty:before{content:'How can I assist?';color:var(--secondary-text-color);padding:12px;background:var(--secondary-background-color);border-radius:12px;align-self:flex-start}.line{padding:11px 14px;background:var(--secondary-background-color);border-radius:14px;max-width:85%;overflow-wrap:anywhere}.line.user{align-self:flex-end;background:var(--primary-color);color:var(--text-primary-color,#fff)}form{display:flex;gap:8px;align-items:center}form input{flex:1;min-width:0;border:1px solid var(--divider-color);border-radius:11px;background:var(--secondary-background-color);padding:13px}form .send{background:var(--primary-color);color:var(--text-primary-color,#fff);border-color:transparent}.speak{min-width:48px;font-size:1.2rem}.tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.quick-commands button{margin:4px}.favourite-item{display:inline-flex;align-items:center;gap:0;margin:4px;border:1px solid var(--divider-color);border-radius:12px;overflow:hidden;background:var(--secondary-background-color)}.favourite-item button{margin:0;border:0;border-radius:0}.favourite-item .remove-favourite{min-width:44px;padding:8px 12px;border-left:1px solid var(--divider-color);color:var(--secondary-text-color);font-size:1.3rem;line-height:1}.favourite-item .remove-favourite:hover{background:var(--error-color,#db4437);color:white}.message-actions{display:flex;justify-content:flex-end;margin-top:5px}.message-actions button{min-height:32px;padding:3px 10px;font-size:.8rem;background:transparent;color:inherit;border-color:currentColor}.message-actions[hidden]{display:none}.quick-commands h3{margin:12px 0 4px}details{border-top:1px solid var(--divider-color);padding:12px 0}summary{cursor:pointer;font-weight:600}select{max-width:100%;padding:8px;border:1px solid var(--divider-color);border-radius:8px;background:var(--secondary-background-color)}.overview{display:flex;flex-wrap:wrap;gap:6px 18px;padding:8px 12px;margin-top:12px;background:var(--secondary-background-color);border-radius:10px}.overview small{margin:2px 0}.diag-card{padding:12px;margin:8px 0;background:var(--secondary-background-color);border-radius:10px;overflow-wrap:anywhere}.diag-card p{margin:4px 0}.voice-status{min-height:1.2em}.settings-fields label{display:block}.room-label{display:block;margin:10px 0}@media(max-width:600px){ha-card{margin:10px;padding:16px}.toolbar{gap:8px}.toolbar a{display:none}.toolbar-title{font-size:18px}.history{min-height:220px}form{flex-wrap:wrap}form input{flex:1 1 calc(100% - 70px)}.line{max-width:92%}}
 .sentence-box{padding:14px;border:1px solid var(--divider-color);border-radius:12px;margin:12px 0}.sentence-tokens{display:flex;flex-wrap:wrap;gap:8px;min-height:46px}.sentence-piece{display:inline-flex;align-items:center;flex-wrap:wrap;border:1px solid var(--primary-color);border-radius:10px;padding:4px;gap:3px}.sentence-piece.missing{border-style:dashed}.sentence-piece button{padding:6px 9px;min-height:36px}.sentence-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;font-size:1.1rem}.sentence-gap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sentence-gap input{max-width:180px}.sentence-player{width:100%;margin-top:8px}.phrase-suggestions button{border-style:dashed}.phrase-suggestions button.saved{border-style:solid}.sentence-empty{color:var(--secondary-text-color);align-self:center}audio{max-width:100%}
 .recording-search-controls{align-items:flex-end}.recording-search-controls label{display:flex;flex:1 1 260px;flex-direction:column;gap:6px}.recording-search{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--divider-color);border-radius:10px;background:var(--secondary-background-color);padding:10px}
+.phrase-suggestions{display:block}.phrase-category{margin:12px 0}.phrase-category h4{margin:0 0 8px;font-size:.95rem}.phrase-category .tools{margin:0}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Declan</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
 <ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Declan</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
@@ -261,14 +262,31 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       const voice=data.builder_voice;
       const savedClips=(data.palette_entries || data.entries || []).filter(e=>['clip','imported_clip'].includes(e.kind) && voice && e.provider===voice.provider && e.voice_id===voice.voice_id);
       const savedNames=new Set(savedClips.map(e=>e.text.toLowerCase()));
-      const words=['Playing','music from Spotify in the','I requested','in','easy listening','acoustic','rock','pop','work focus','cooking','romantic','sunday','relaxing','dinner','90s','80s','evening chill','afrikaans','country','jazz',...(data.rooms || []).map(room=>room+'.'),...savedClips.map(e=>e.text)];
+      const linking=['Playing','music from Spotify in the','I requested','in'];
+      const music=['easy listening','acoustic','rock','pop','work focus','cooking','romantic','sunday','relaxing','dinner','90s','80s','evening chill','afrikaans','country','jazz'];
+      const rooms=(data.rooms || []).map(room=>room+'.');
+      const roomKeys=new Set([...rooms.map(text=>text.toLowerCase()),...['kitchen','study','master bedroom','lounge','utility room','back garden','front garden','downstairs','upstairs','everywhere','finn suite','tux suite','stairs','office','living room'].map(text=>text+'.')]);
+      const linkingKeys=new Set(linking.map(text=>text.toLowerCase()));
+      const musicKeys=new Set(music);
+      const other=[];
+      for(const clip of savedClips){const key=clip.text.toLowerCase();if(roomKeys.has(key))rooms.push(clip.text);else if(!linkingKeys.has(key) && !musicKeys.has(key))other.push(clip.text);}
       const seen=new Set();
-      for(const text of words) {
-        const key=text.toLowerCase();if(seen.has(key))continue;seen.add(key);
-        const button=document.createElement('button');button.type='button';button.textContent=text;
-        const saved=savedNames.has(key);if(saved)button.className='saved';
-        button.title=saved?'Add saved clip':'Add phrase; preview will check for a saved recording';
-        button.onclick=()=>this.addSentencePart(text);suggestions.append(button);
+      const groups=[['Linking phrases',linking],['Music',music],['Zones/Rooms',rooms],['Other saved clips',other]];
+      for(const [name,words] of groups){
+        const unique=[];
+        for(const text of words){const key=text.toLowerCase();if(seen.has(key))continue;seen.add(key);unique.push(text);}
+        if(!unique.length)continue;
+        if(name!=='Linking phrases')unique.sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base',numeric:true}));
+        const section=document.createElement('section');section.className='phrase-category';section.setAttribute('aria-label',name);
+        const heading=document.createElement('h4');heading.textContent=name;
+        const buttons=document.createElement('div');buttons.className='tools';
+        for(const text of unique){
+          const button=document.createElement('button');button.type='button';button.textContent=text;
+          const saved=savedNames.has(text.toLowerCase());if(saved)button.className='saved';
+          button.title=saved?'Add saved clip':'Add phrase; preview will check for a saved recording';
+          button.onclick=()=>this.addSentencePart(text);buttons.append(button);
+        }
+        section.append(heading,buttons);suggestions.append(section);
       }
       this.renderSentence();
       const entries=this.root.querySelector('.voice-cache-entries');entries.replaceChildren();
@@ -619,6 +637,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
+
+
+
 
 
 
