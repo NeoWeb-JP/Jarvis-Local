@@ -1,4 +1,4 @@
-"""Jarvis Local integration and authenticated sidebar chat."""
+"""Home Voice Assistant integration and authenticated sidebar chat."""
 from pathlib import Path
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
@@ -48,7 +48,7 @@ async def async_setup_entry(hass, entry):
     try:
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
-            sidebar_title="Jarvis Local", sidebar_icon="mdi:robot",
+            sidebar_title="Home Voice Assistant", sidebar_icon="mdi:robot",
             module_url="/jarvis_local/panel.js?v=0.24.0",
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
