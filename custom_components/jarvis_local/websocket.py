@@ -1,6 +1,7 @@
 """Administrator-only panel API. Diagnostics are held in memory only."""
 import asyncio
 import json
+import base64
 import probatio as vol
 from .voice_profiles import public_profiles, validate_profiles, save_profiles_file
 from homeassistant.components import websocket_api, conversation
@@ -8,6 +9,67 @@ from homeassistant.core import callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers import area_registry as ar
 from .settings import save
+from homeassistant.exceptions import HomeAssistantError
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/voice_cache'})
+@websocket_api.async_response
+async def voice_cache(hass,connection,msg):
+    data=hass.data.get('jarvis_local',{})
+    cache=data.get('voice_cache')
+    manager=data.get('voice_manager')
+    if cache is None or manager is None:
+        connection.send_error(msg['id'],'not_loaded','Jarvis Voice Manager is not loaded');return
+    try:
+        result=await cache.snapshot()
+    except OSError:
+        connection.send_error(msg['id'],'storage_error','Could not read voice cache storage');return
+    result['usage']=data['voice_usage'].snapshot()
+    result['directory']=str(cache.directory)
+    result['entity_id']=manager.entity_id
+    result['enabled']=manager._entry.options.get('cache_enabled',True)
+    result['phrases_enabled']=manager._entry.options.get('phrase_library_enabled',True)
+    result['rooms']=[a.name for a in ar.async_get(hass).async_list_areas()]
+    connection.send_result(msg['id'],result)
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/voice_cache_audio',
+    vol.Required('key'):str,vol.Required('extension'):str})
+@websocket_api.async_response
+async def voice_cache_audio(hass,connection,msg):
+    cache=hass.data.get('jarvis_local',{}).get('voice_cache')
+    if cache is None:
+        connection.send_error(msg['id'],'not_loaded','Voice cache is not loaded');return
+    try:
+        audio=await cache.saved_audio(msg['key'],msg['extension'])
+    except (OSError,ValueError):
+        connection.send_error(msg['id'],'invalid_audio','That recording is not available');return
+    connection.send_result(msg['id'],{'audio':base64.b64encode(audio).decode('ascii'),
+                                    'extension':msg['extension']})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/prepare_voice_phrase',
+    vol.Required('text'):str,vol.Required('kind'):vol.In(['clip','sentence'])})
+@websocket_api.async_response
+async def prepare_voice_phrase(hass,connection,msg):
+    data=hass.data.get('jarvis_local',{})
+    manager=data.get('voice_manager')
+    if manager is None:
+        connection.send_error(msg['id'],'not_loaded','Jarvis Voice Manager is not loaded');return
+    # Serialize explicit admin generation and reject clicks queued by another client.
+    lock=data.setdefault('phrase_generation_lock',asyncio.Lock())
+    if lock.locked():
+        connection.send_error(msg['id'],'busy','A phrase is already being prepared');return
+    try:
+        async with lock:
+            result=await manager.prepare_phrase(msg['text'],msg['kind'])
+    except (HomeAssistantError,ValueError,OSError,TimeoutError) as err:
+        connection.send_error(msg['id'],'generation_failed',
+                              str(err) if isinstance(err,ValueError) else 'Speech generation failed; check Home Assistant logs');return
+    connection.send_result(msg['id'],result)
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/info'})
@@ -94,4 +156,7 @@ async def check_voice_bridge(hass,connection,msg):
     connection.send_result(msg['id'],{'bridges':results})
 
 def register(hass):
-    for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge]:websocket_api.async_register_command(hass,handler)
+    for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
+                    voice_cache,voice_cache_audio,prepare_voice_phrase]:websocket_api.async_register_command(hass,handler)
+
+

@@ -10,5 +10,26 @@
     "abort": {
       "already_configured": "Jarvis Local is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Jarvis voice settings",
+        "description": "Use existing TTS providers. Change the cache revision after changing the provider voice or model.",
+        "data": {
+          "primary_tts": "Primary text-to-speech entity",
+          "fallback_tts": "Fallback text-to-speech entity",
+          "cache_enabled": "Save generated speech",
+          "phrase_library_enabled": "Reuse clips for music responses",
+          "category_fallback": "Use a saved equivalent reply when the primary provider fails",
+          "cache_revision": "Voice cache revision",
+          "elevenlabs_voice": "ElevenLabs voice"
+        }
+      }
+    },
+    "error": {
+      "same_provider": "Choose different primary and fallback providers."
+    }
   }
 }
+

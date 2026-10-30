@@ -57,6 +57,7 @@ class VoiceOptionsFlow(config_entries.OptionsFlow):
             vol.Required("primary_tts", default=current.get("primary_tts", PRIMARY)): str,
             vol.Required("fallback_tts", default=current.get("fallback_tts", FALLBACK)): str,
             vol.Required("cache_enabled", default=current.get("cache_enabled", True)): bool,
+            vol.Required("phrase_library_enabled", default=current.get("phrase_library_enabled", True)): bool,
             vol.Required("category_fallback", default=current.get("category_fallback", True)): bool,
             vol.Required("cache_revision", default=current.get("cache_revision", "v1")): str,
         }
@@ -65,3 +66,5 @@ class VoiceOptionsFlow(config_entries.OptionsFlow):
         else:
             schema[vol.Optional("elevenlabs_voice", default=voice_id)] = str
         return vol.Schema(schema)
+
+

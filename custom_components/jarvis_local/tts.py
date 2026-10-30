@@ -12,6 +12,7 @@ from .voice_cache import VoiceCache
 from .voice_catalog_fallback import category_alternatives, load_catalogue
 from .voice_provider import generate_from_existing_tts
 from .voice_usage import VoiceUsage
+from .phrase_library import PhraseLibrary, normalise_audio, phrase_parts
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +25,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
         "voice_cache", VoiceCache(hass.config.path("jarvis_voice_cache"))
     )
     usage = hass.data["jarvis_local"].setdefault("voice_usage", VoiceUsage())
-    async_add_entities([JarvisVoiceManager(entry, cache, usage)])
+    manager = JarvisVoiceManager(entry, cache, usage)
+    hass.data['jarvis_local']['voice_manager'] = manager
+    async_add_entities([manager])
 
 
 class JarvisVoiceManager(TextToSpeechEntity):
@@ -38,6 +41,40 @@ class JarvisVoiceManager(TextToSpeechEntity):
         self._entry = entry
         self._cache = cache
         self._usage = usage
+        self._phrases = PhraseLibrary(cache, self._normalise)
+
+    async def _normalise(self, extension, audio):
+        from homeassistant.components.ffmpeg import get_ffmpeg_manager
+        return await normalise_audio(extension, audio, get_ffmpeg_manager(self.hass).binary)
+
+    async def prepare_phrase(self, text, kind):
+        """Explicit admin generation; does not run any household action."""
+        if kind not in {'clip', 'sentence'} or not isinstance(text, str) or not 1 <= len(text.strip()) <= 200:
+            raise ValueError('Enter a phrase of 1 to 200 characters')
+        config = self._entry.options
+        if not config.get('cache_enabled', True):
+            raise ValueError('Enable the voice cache in integration options first')
+        state = await self._cache.snapshot(limit=0)
+        if not state['storage_available']:
+            raise ValueError('Cache limit or free-space reserve reached; no generation requested')
+        provider = config.get('primary_tts', DEFAULT_PROVIDER)
+        voice = config.get('elevenlabs_voice', '')
+        options = {'voice': voice} if voice else {}
+        identity = dict(provider=provider, voice_id=f"{config.get('cache_revision','v1')}:{voice}",
+                        model=provider, language='en', settings=options)
+        skipped_before = self._cache.skipped_writes
+        async def generate(message):
+            return await generate_from_existing_tts(self.hass, provider_entity_id=provider,
+                                                     text=message, language='en', options=options)
+        if kind == 'clip':
+            extension, audio, hit = await self._phrases.clip(text.strip(), identity, generate)
+        else:
+            extension, audio, hit = await self._cache.get_or_generate_audio(
+                text=text.strip(), **identity, generate=lambda:generate(text.strip()),
+            )
+        self._usage.record('elevenlabs_cached' if hit else 'elevenlabs_generated')
+        return {'cached':hit, 'saved':hit or self._cache.skipped_writes == skipped_before,
+                'extension':extension, 'bytes':len(audio)}
 
     async def async_get_tts_audio(self, message, language, options):
         config = self._entry.options
@@ -69,12 +106,29 @@ class JarvisVoiceManager(TextToSpeechEntity):
             try:
                 provider_options = primary_options if index == 0 else dict(options or {})
                 voice_key = f"{revision}:{selected_voice}" if index == 0 else revision
-                async def request_audio(entity_id=entity_id, provider_options=provider_options):
+                async def request_audio(text=message, entity_id=entity_id, provider_options=provider_options):
                     return await generate_from_existing_tts(
                         self.hass, provider_entity_id=entity_id,
-                        text=message, language=language, options=provider_options,
+                        text=text, language=language, options=provider_options,
                     )
                 if config.get("cache_enabled", True):
+                    identity = dict(provider=entity_id, voice_id=voice_key, model=entity_id,
+                                    language=language or 'en', settings=provider_options)
+                    # Prefer a deliberately generated, natural whole sentence.
+                    if index == 0 and config.get('phrase_library_enabled', True) and phrase_parts(message):
+                        whole = await self._cache.find_cached_audio(text=message, **identity)
+                        if whole:
+                            self._usage.record('elevenlabs_cached')
+                            return whole
+                        try:
+                            composed = await self._phrases.compose(message, identity, request_audio)
+                        except (ValueError, OSError, TimeoutError) as err:
+                            _LOGGER.warning('Phrase assembly unavailable; using whole-sentence TTS: %s', type(err).__name__)
+                        else:
+                            extension, audio, hit, generated = composed
+                            self._usage.record('elevenlabs_phrase_cached' if hit or not generated else 'elevenlabs_phrase_generated')
+                            self._usage.record_clips(generated)
+                            return extension, audio
                     extension, audio, hit = await self._cache.get_or_generate_audio(
                     text=message,
                     provider=entity_id,
@@ -135,3 +189,5 @@ class JarvisVoiceManager(TextToSpeechEntity):
                 )
                 return cached
         return None
+
+

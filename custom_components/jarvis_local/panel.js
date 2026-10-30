@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.24.0';
+      this.root.querySelector('.connection').textContent='v0.28.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -29,6 +29,17 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 <div class="overview" aria-label="Jarvis overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small><button type="button" class="check-bridge">Check bridge connection</button><small class="bridge-status" role="status"></small></div><div class="history" role="log" aria-live="polite"></div>
 <form><input aria-label="Message to Jarvis" placeholder="Ask Jarvis anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Jarvis">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Jarvis reply</button>
 <details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant whose conversation agent is Jarvis Local. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
+<details class="voice-cache-section"><summary>Voice cache</summary>
+<small>Saved speech stays in Home Assistant. Prepare reusable clips or a whole sentence for more natural speech. Preparing missing audio uses your configured ElevenLabs provider and may use credits.</small>
+<div class="tools"><button type="button" class="refresh-voice-cache">Refresh voice cache</button></div>
+<p class="voice-cache-summary" role="status">Open to load saved speech.</p><small class="voice-cache-source"></small>
+<label>Phrase <input class="phrase-text" aria-label="Phrase to save" maxlength="200" placeholder="country"></label>
+<label>Save as <select class="phrase-kind" aria-label="Phrase type"><option value="clip">Reusable clip</option><option value="sentence">Whole sentence</option></select></label>
+<button type="button" class="prepare-phrase">Prepare and save phrase</button>
+<small>Room clips end with a full stop to finish the sentence. Clips are prepared only when you press the button.</small>
+<div class="tools phrase-suggestions" aria-label="Suggested genres and rooms"></div>
+<small class="phrase-message" role="status"></small><audio class="phrase-player" controls hidden aria-label="Saved phrase preview"></audio>
+<div class="voice-cache-entries"></div></details>
 <details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a favourite to run it. Frequent commands fill the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
 <details><summary>Tools</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Troubleshooting</summary><label><input type="checkbox" class="debug-toggle"> Enable debug and troubleshooting</label><small>Off by default. When enabled, recent request details are held temporarily in memory and routing messages are shown in chat. Disabling clears them.</small><div class="debug-content" hidden><button type="button" class="test-suite">Preview checks</button><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><div class="diagnostic-cards"></div><details><summary>Raw diagnostics</summary><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></div></details></details></ha-card>`;
     this.root.querySelector('.menu').onclick = () => this.dispatchEvent(new Event('hass-toggle-menu', {bubbles:true, composed:true}));
@@ -38,6 +49,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.save-settings').onclick=()=>this.saveSettings();
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
+    this.root.querySelector('.voice-cache-section').ontoggle=e=>{if(e.target.open)this.loadVoiceCache();};
+    this.root.querySelector('.refresh-voice-cache').onclick=()=>this.loadVoiceCache();
+    this.root.querySelector('.prepare-phrase').onclick=()=>this.preparePhrase();
     this.root.querySelector('.check-bridge').onclick=()=>this.checkBridge();
     this.root.querySelector('.test-suite').onclick=()=>this.previewChecks();
     this.root.querySelector('.debug-toggle').onchange=e=>this.setDebug(e.target.checked);
@@ -56,7 +70,66 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     for (const button of this.root.querySelectorAll('[data-command]')) button.onclick = () => {this.root.querySelector('form input').value=button.dataset.command;this.send();};
     this.root.querySelector('.clear').onclick = () => {this.root.querySelector('.history').replaceChildren();this.conversationId=undefined;};
   }
-  disconnectedCallback() { this.stopVoice(true); }
+  disconnectedCallback() {
+    this.stopVoice(true);
+    if(this.phraseUrl){URL.revokeObjectURL(this.phraseUrl);this.phraseUrl=null;}
+    const player=this.root?.querySelector('.phrase-player');if(player)player.pause();
+  }
+  async loadVoiceCache() {
+    if(!this._hass || this.loadingVoiceCache)return;
+    this.loadingVoiceCache=true;
+    const summary=this.root.querySelector('.voice-cache-summary');
+    try {
+      const data=await this._hass.callWS({type:'jarvis_local/voice_cache'});
+      this.voiceCacheData=data;
+      const mb=n=>(n/1048576).toFixed(1);
+      summary.textContent=data.count+' recordings · '+mb(data.bytes)+' MB of '+mb(data.limit_bytes)+' MB limit · '+(data.free_bytes/1073741824).toFixed(1)+' GB free on Home Assistant storage.';
+      const sourceNames={elevenlabs_cached:'Saved whole sentence',elevenlabs_generated:'Whole sentence requested from provider',elevenlabs_phrase_cached:'Reused saved clips or assembled response',elevenlabs_phrase_generated:'Generated missing clips',elevenlabs_category_cached:'Saved alternative response',xtts_cached:'Saved fallback voice',xtts_generated:'Fallback voice generated'};
+      this.root.querySelector('.voice-cache-source').textContent='Latest Voice Manager request: '+(sourceNames[data.usage?.last_source] || 'None since restart')+'. '+(data.usage?.generated_clips || 0)+' new clips this session. Cache '+(data.enabled?'enabled':'disabled')+'; phrase assembly '+(data.phrases_enabled?'enabled':'disabled')+'. Use '+data.entity_id+' in your voice assistant. Stored at '+data.directory+'. Counters reset on restart; Home Assistant may also serve audio from its own cache. '+(!data.storage_available?'Storage limit reached; new audio will not be saved. ':'')+(data.skipped_writes?data.skipped_writes+' writes skipped to protect storage.':'');
+      const suggestions=this.root.querySelector('.phrase-suggestions');suggestions.replaceChildren();
+      for(const text of ['Playing','music from Spotify in the','I requested','in','country','pop','rock','jazz',...(data.rooms || []).map(room=>room+'.')]) {
+        const button=document.createElement('button');button.type='button';button.textContent=text;
+        button.onclick=()=>{this.root.querySelector('.phrase-text').value=text;this.root.querySelector('.phrase-kind').value='clip';};suggestions.append(button);
+      }
+      const entries=this.root.querySelector('.voice-cache-entries');entries.replaceChildren();
+      if(!data.count){const p=document.createElement('p');p.textContent='No saved recordings yet. Prepare a phrase or use Jarvis Voice Manager.';entries.append(p);}
+      for(const entry of data.entries || []) {
+        const row=document.createElement('div');row.className='diag-card';
+        const title=document.createElement('p');title.textContent=entry.text;
+        const detail=document.createElement('small');detail.textContent=(entry.kind || 'sentence')+' · '+(entry.bytes/1024).toFixed(1)+' KB · '+(entry.provider || 'older recording')+' · '+(entry.voice_id || 'voice unavailable');
+        const play=document.createElement('button');play.type='button';play.textContent='Play';play.setAttribute('aria-label','Play '+entry.text);play.onclick=()=>this.playSavedPhrase(entry);
+        row.append(title,detail,play);entries.append(row);
+      }
+      if(data.count>(data.entries || []).length){const p=document.createElement('small');p.textContent='Showing the newest '+data.entries.length+' recordings.';entries.append(p);}
+    } catch(e){summary.textContent='Could not load voice cache: '+(e.message || String(e));}
+    finally{this.loadingVoiceCache=false;}
+  }
+  async preparePhrase() {
+    const button=this.root.querySelector('.prepare-phrase');if(button.disabled)return;
+    const text=this.root.querySelector('.phrase-text').value.trim();
+    const status=this.root.querySelector('.phrase-message');
+    if(!text){status.textContent='Enter a phrase first.';return;}
+    button.disabled=true;status.textContent='Preparing speech…';
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/prepare_voice_phrase',text,kind:this.root.querySelector('.phrase-kind').value});
+      status.textContent=result.saved===false?'Audio was prepared but storage filled up before it could be saved.':result.cached?'That phrase was already saved.':'Phrase prepared. Check the recordings below to preview it.';
+      await this.loadVoiceCache();
+    } catch(e){status.textContent='Could not prepare phrase: '+(e.message || String(e));}
+    finally{button.disabled=false;}
+  }
+  async playSavedPhrase(entry) {
+    const status=this.root.querySelector('.phrase-message');
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/voice_cache_audio',key:entry.key,extension:entry.extension});
+      const mime={wav:'audio/wav',mp3:'audio/mpeg',ogg:'audio/ogg',flac:'audio/flac'}[result.extension];
+      if(!mime)throw new Error('Unsupported recording format');
+      const bytes=Uint8Array.from(atob(result.audio),c=>c.charCodeAt(0));
+      const player=this.root.querySelector('.phrase-player');player.pause();
+      if(this.phraseUrl)URL.revokeObjectURL(this.phraseUrl);
+      this.phraseUrl=URL.createObjectURL(new Blob([bytes],{type:mime}));
+      player.src=this.phraseUrl;player.hidden=false;await player.play();status.textContent='Playing saved audio on this device.';
+    } catch(e){status.textContent='Could not play saved phrase: '+(e.message || String(e));}
+  }
   voiceStatus(message) { if(this.root) this.root.querySelector('.voice-status').textContent=message; }
   async loadVoicePipelines() {
     if(!this._hass || !this.root || this.loadingPipelines) return;
@@ -371,3 +444,5 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
+
+

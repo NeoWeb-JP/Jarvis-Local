@@ -13,7 +13,14 @@ jobs:
           python-version: '3.13'
       - run: python -m compileall -q custom_components/jarvis_local
       - run: node --check custom_components/jarvis_local/panel.js
-      - run: python -m unittest discover -s tests -v
+      - run: python -m pip install pytest
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - run: python -m pytest -q tests
+      - run: node tests/test_panel_voice.js
+      - run: node tests/test_panel_favourites.js
+      - run: node tests/test_panel_phrase_cache.js
   hassfest:
     runs-on: ubuntu-latest
     steps:
@@ -26,3 +33,5 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+
+

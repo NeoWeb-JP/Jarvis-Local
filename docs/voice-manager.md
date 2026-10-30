@@ -30,21 +30,21 @@ Cached recordings can be used even if ElevenLabs is temporarily offline.
 
 **Important:** The provider voice/model currently configured in Home
 Assistant is not directly discoverable from this cache's metadata.
-Change `hass.data['jarvis_local']['voice_cache_revision']` to a new value
+Change `cache_revision` in the Jarvis integration options to a new value
 if you change voices or ElevenLabs synthesis settings, or remove the
 cache directory, to avoid returning recordings in the previous voice.
-A proper settings UI for this value is still required.
+The options flow provides this setting.
 
 ## Outstanding work
 
 - Validate against the installed Home Assistant version (entity registration,
   ElevenLabs media-source output and Muse playback).
 - Verify fallback entity `tts.jarvis_xtts` actually exists and works.
-- Add a settings/config-flow UI for provider IDs, cache revision, retention,
-  size limits, and usage statistics.
+- Optional configurable retention and larger storage limits (the default
+  shared cache now has a 256 MiB cap and 512 MiB free-space reserve).
 - Confirm provider failures beyond the handled exceptions and TTS format
   compatibility. Test failed and concurrent generations end-to-end.
-- Add ElevenLabs budget/usage controls and catalogue pre-generation.
+- Add billed ElevenLabs budget controls and catalogue-wide pre-generation.
 - Avoid assuming saved audio is encrypted: treat the cache as private
   household data and exclude it from public repositories.
 
@@ -90,3 +90,13 @@ original TTS-request text for approved category alternates; this should be
 reviewed before production rollout.
 
 These paths require unit and end-to-end playback tests before deployment.
+
+## Reusable clips and cache screen (0.28.0)
+
+The sidebar now has an administrator-only **Voice cache** screen with saved
+phrase previews, explicit clip/whole-sentence preparation, storage usage and
+per-process source counters. Music responses can reuse genre and room clips,
+decoded once and joined into a single WAV. Exact whole-sentence audio takes
+precedence. See [Reusable voice phrases](phrase-library.md) for limits and tests.
+
+

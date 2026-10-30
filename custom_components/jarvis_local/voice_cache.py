@@ -13,17 +13,85 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import shutil
+from time import time
 from typing import Awaitable, Callable
 
 
 class VoiceCache:
     """Cache by exact spoken text and voice generation parameters."""
 
-    def __init__(self, directory: str | Path) -> None:
+    def __init__(self, directory: str | Path, *, max_bytes=256*1024*1024,
+                 min_free_bytes=512*1024*1024) -> None:
         self.directory = Path(directory)
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.hits = 0
         self.misses = 0
+        self.max_bytes = max_bytes
+        self.min_free_bytes = min_free_bytes
+        self.skipped_writes = 0
+        self._write_lock = asyncio.Lock()
+
+    async def _save(self, path, audio, metadata):
+        """Bound all new writes, including concurrent different phrases."""
+        async with self._write_lock:
+            def write():
+                self.directory.mkdir(parents=True, exist_ok=True)
+                used = sum(p.stat().st_size for p in self.directory.rglob('*') if p.is_file())
+                sidecar = path.with_suffix(path.suffix+'.json')
+                encoded = json.dumps(metadata, ensure_ascii=False).encode('utf-8')
+                required = len(audio)+len(encoded)
+                if used+required > self.max_bytes or shutil.disk_usage(self.directory).free-required < self.min_free_bytes:
+                    return False
+                path.parent.mkdir(parents=True, exist_ok=True)
+                for target, content in [(path, audio), (sidecar, encoded)]:
+                    fd, tmp = tempfile.mkstemp(prefix='.jarvis-', dir=path.parent)
+                    try:
+                        with os.fdopen(fd, 'wb') as stream:
+                            stream.write(content)
+                            stream.flush()
+                            os.fsync(stream.fileno())
+                        os.replace(tmp, target)
+                    finally:
+                        if os.path.exists(tmp):os.unlink(tmp)
+                return True
+            if not await asyncio.to_thread(write):
+                self.skipped_writes += 1
+
+    async def snapshot(self, limit=200):
+        """Private administrator inventory; old files remain readable."""
+        def scan():
+            parent = self.directory
+            while not parent.exists():parent = parent.parent
+            free = shutil.disk_usage(parent).free
+            entries=[]; used=0; count=0
+            for path in self.directory.glob('*/*'):
+                if not path.is_file() or path.is_symlink():continue
+                used += path.stat().st_size
+                if path.suffix[1:] not in {'wav','mp3','ogg','flac'}:continue
+                count += 1
+                try:
+                    metadata=json.loads(path.with_suffix(path.suffix+'.json').read_text(encoding='utf-8'))
+                    if not isinstance(metadata,dict):raise ValueError('Invalid metadata')
+                except (OSError,ValueError):
+                    metadata={'text':'Older cached audio (text unavailable)','kind':'legacy'}
+                entries.append({**metadata,'key':path.stem,'extension':path.suffix[1:],
+                                'bytes':path.stat().st_size})
+            entries.sort(key=lambda item:item.get('created',0),reverse=True)
+            return {'entries':entries[:limit], 'count':count, 'bytes':used,
+                    'limit_bytes':self.max_bytes, 'free_bytes':free,
+                    'reserve_bytes':self.min_free_bytes,
+                    'storage_available':used < self.max_bytes and free > self.min_free_bytes,
+                    'hits':self.hits,'misses':self.misses,'skipped_writes':self.skipped_writes}
+        return await asyncio.to_thread(scan)
+
+    async def saved_audio(self, key, extension):
+        path=self.path_for(key,extension)
+        def read():
+            if path.is_symlink() or path.parent.is_symlink():raise ValueError('Invalid cache path')
+            if path.stat().st_size > 8*1024*1024:raise ValueError('Audio too large to preview')
+            return path.read_bytes()
+        return await asyncio.to_thread(read)
 
     @staticmethod
     def key(*, text: str, provider: str, voice_id: str, model: str,
@@ -83,27 +151,15 @@ class VoiceCache:
             if not isinstance(audio, bytes) or not audio:
                 raise ValueError("TTS provider returned empty or invalid audio")
 
-            def write_atomic() -> None:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                fd, tmp = tempfile.mkstemp(prefix=".jarvis-", dir=path.parent)
-                try:
-                    with os.fdopen(fd, "wb") as stream:
-                        stream.write(audio)
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    os.replace(tmp, path)
-                finally:
-                    if os.path.exists(tmp):
-                        os.unlink(tmp)
-
-            await asyncio.to_thread(write_atomic)
+            await self._save(path, audio, dict(text=text, provider=provider,
+                voice_id=voice_id, kind="sentence", created=time()))
             self.misses += 1
             return audio, False
 
     async def get_or_generate_audio(
         self, *, text: str, provider: str, voice_id: str, model: str,
         generate: Callable[[], Awaitable[tuple[str, bytes]]],
-        language: str = "en", settings: dict | None = None,
+        language: str = "en", settings: dict | None = None, kind="sentence",
     ) -> tuple[str, bytes, bool]:
         """Cache audio when the provider chooses its output format.
 
@@ -141,20 +197,8 @@ class VoiceCache:
             )
             path = self.path_for(key, ext)
 
-            def store():
-                path.parent.mkdir(parents=True, exist_ok=True)
-                fd, tmp = tempfile.mkstemp(prefix=".jarvis-", dir=path.parent)
-                try:
-                    with os.fdopen(fd, "wb") as stream:
-                        stream.write(audio)
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    os.replace(tmp, path)
-                finally:
-                    if os.path.exists(tmp):
-                        os.unlink(tmp)
-
-            await asyncio.to_thread(store)
+            await self._save(path, audio, dict(text=text, provider=provider,
+                voice_id=voice_id, kind=kind, created=time()))
             self.misses += 1
             return ext, audio, False
 
@@ -197,17 +241,8 @@ class VoiceCache:
         )
         path = self.path_for(key, extension)
         async with self._locks[identity]:
-            def write():
-                path.parent.mkdir(parents=True, exist_ok=True)
-                fd, tmp = tempfile.mkstemp(prefix=".jarvis-", dir=path.parent)
-                try:
-                    with os.fdopen(fd, "wb") as stream:
-                        stream.write(audio)
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    os.replace(tmp, path)
-                finally:
-                    if os.path.exists(tmp):
-                        os.unlink(tmp)
-            await asyncio.to_thread(write)
+            await self._save(path, audio, dict(text=text, provider=provider,
+                voice_id=voice_id, kind="sentence", created=time()))
             self.misses += 1
+
+
