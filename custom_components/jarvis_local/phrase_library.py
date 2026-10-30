@@ -116,7 +116,9 @@ class PhraseLibrary:
         clip_identity = {**identity, "model": identity["model"]+":"+ASSEMBLY_VERSION+":clip"}
         async def create():
             extension, audio = await generate(text)
-            return "wav", await self.normalise(extension, audio)
+            converted = await self.normalise(extension, audio)
+            # Validate and trim before saving; never persist silent/broken clips.
+            return "wav", join_clips([converted])
         return await self.cache.get_or_generate_audio(
             text=text, **clip_identity, generate=create, kind="clip",
         )

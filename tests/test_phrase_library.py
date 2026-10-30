@@ -98,6 +98,12 @@ class PhraseTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises((ValueError,EOFError,phrases.wave.Error)):
                 phrases.join_clips([value])
 
+    async def test_silent_provider_audio_is_not_saved(self):
+        async def silent(text):return 'wav',phrases.pcm_wave(b'\0\0'*100)
+        with self.assertRaises(ValueError):
+            await self.library.clip('country',self.identity,silent)
+        self.assertEqual((await self.cache.snapshot())['count'],0)
+
     async def test_full_disk_protects_existing_recordings(self):
         await self.library.clip('country',self.identity,self.generate)
         before=await self.cache.snapshot()
