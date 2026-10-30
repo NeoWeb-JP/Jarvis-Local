@@ -1,5 +1,30 @@
 # Reusable voice phrases (0.28.0)
 
+## Interactive sentence builder (0.30.0)
+
+Open **Voice cache → Build a sentence** and tap words or phrases to append them.
+The palette contains common linking phrases, music tags, Home Assistant room
+names, and reusable recordings from the current voice. Solid buttons indicate a
+saved clip in the displayed inventory; dashed buttons may need recording. The
+preview checks the exact saved keys, including recordings beyond the displayed
+inventory. You can use up to eight clips, move them with the arrow buttons,
+remove individual clips, undo the last addition, or clear the sentence.
+
+**Try an example** builds `Playing country music from Spotify in the kitchen.`
+without playing it or generating speech. Adjust **Pause between clips** from
+0 to 500 milliseconds and select **Preview sentence** to hear one joined audio
+file on your current browser/device. Editing the sentence stops playback and
+invalidates any preview still loading.
+
+Preview is read-only: it does not call ElevenLabs, save a new recording, execute
+the sentence, change the Assist pipeline, or play on household speakers. Only
+clips matching the current provider, voice/revision, language and default options
+are eligible. If a clip is missing, the entire preview stops and lists it.
+**Record clip** fills **Save a new recording** with that clip's text; the separate
+**Prepare and save phrase** button is still required to request provider audio.
+Changing the pause is only for this audition and does not change automatic
+music response timing.
+
 ## Import your own recordings (0.29.0)
 
 Open **Voice cache → Import recordings**. Choose your room MP3s (multiple files
@@ -120,6 +145,8 @@ Main has been updated without a PR, following the owner's preference. No live
 HA deployment, restart, pipeline change, paid pre-generation or Proxmox storage
 change is part of this implementation. After deployment, test one phrase in the
 screen, listen to its preview, then test the manager in your Assist pipeline.
+
+
 
 
 

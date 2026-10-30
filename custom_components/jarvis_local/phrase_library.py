@@ -83,10 +83,12 @@ async def normalise_audio(extension: str, audio: bytes, binary: str = "ffmpeg") 
     return pcm_wave(pcm)
 
 
-def join_clips(clips: list[bytes]) -> bytes:
+def join_clips(clips: list[bytes], gap_ms: int = 20) -> bytes:
     """Build one WAV with a short word boundary, never separate play calls."""
     if not 1 <= len(clips) <= 8:
         raise ValueError("Invalid clip count")
+    if type(gap_ms) is not int or not 0 <= gap_ms <= 500:
+        raise ValueError('Pause must be between 0 and 500 milliseconds')
     parts = []
     for audio in clips:
         samples=array('h',read_pcm(audio))
@@ -99,7 +101,7 @@ def join_clips(clips: list[bytes]) -> bytes:
         trimmed=samples[max(0,start-RATE//100):min(len(samples),end+RATE//100)]
         if sys.byteorder != 'little':trimmed.byteswap()
         parts.append(trimmed.tobytes())
-    silence = b"\0\0" * (RATE * 20 // 1000)
+    silence = b"\0\0" * (RATE * gap_ms // 1000)
     pcm = silence.join(parts)
     if len(pcm) > RATE*MAX_SECONDS*2:
         raise ValueError("Combined response is too long")
@@ -114,6 +116,27 @@ class PhraseLibrary:
     @staticmethod
     def clip_identity(identity):
         return {**identity, 'model':identity['model']+':'+ASSEMBLY_VERSION+':clip'}
+
+    async def preview(self, parts, identity, gap_ms=20):
+        """Read-only composition: no providers, persistence or household actions."""
+        if not isinstance(parts,list) or not 1 <= len(parts) <= 8:
+            raise ValueError('Choose between 1 and 8 clips')
+        if type(gap_ms) is not int or not 0 <= gap_ms <= 500:
+            raise ValueError('Pause must be between 0 and 500 milliseconds')
+        if any(not isinstance(p,str) or not 1 <= len(p.strip()) <= 200 for p in parts):
+            raise ValueError('Invalid clip text')
+        clips=[];missing=[]
+        for part in parts:
+            text=part.strip().casefold()
+            saved=await self.cache.find_cached_audio(text=text,**self.clip_identity(identity))
+            if saved is None:
+                if text not in missing:missing.append(text)
+            else:
+                extension,audio=saved
+                if extension != 'wav':raise ValueError('Reimport that clip as a reusable recording')
+                clips.append(audio)
+        if missing:return {'missing':missing}
+        return {'missing':[], 'audio':join_clips(clips,gap_ms), 'extension':'wav'}
 
     async def import_clips(self, clips, identity):
         """Validate every clip before saving. Existing keys are preserved."""
@@ -174,6 +197,8 @@ class PhraseLibrary:
             text=message, **composed_identity, generate=create, kind="assembled",
         )
         return extension, audio, hit, generated
+
+
 
 
 

@@ -58,6 +58,11 @@ class JarvisVoiceManager(TextToSpeechEntity):
     def import_token(self):
         return self._cache.key(text='import voice identity',**self.import_identity())
 
+    async def preview_sentence(self, parts, voice_token, gap_ms=20):
+        if voice_token != self.import_token():
+            raise ValueError('Voice settings changed; refresh the voice cache before previewing')
+        return await self._phrases.preview(parts,self.import_identity(),gap_ms)
+
     async def import_clips(self, clips, voice_token):
         if not self._entry.options.get('cache_enabled',True):
             raise ValueError('Enable the voice cache before importing recordings')
@@ -210,6 +215,8 @@ class JarvisVoiceManager(TextToSpeechEntity):
                 )
                 return cached
         return None
+
+
 
 
 

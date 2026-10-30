@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.29.0';
+      this.root.querySelector('.connection').textContent='v0.30.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -23,6 +23,7 @@ class JarvisLocalPanel extends HTMLElement {
 .toolbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--app-header-background-color,var(--card-background-color));position:sticky;top:0;z-index:2}.toolbar-title{font-size:20px;font-weight:600}.menu{font-size:24px}.fallback{margin-left:auto}
 button,select,input{font:inherit;color:inherit}button{min-height:44px;border:1px solid var(--divider-color);border-radius:10px;padding:9px 14px;background:var(--secondary-background-color);cursor:pointer}button:hover{filter:brightness(1.1)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--primary-color)}button:disabled{opacity:.5;cursor:default}.menu{border:0;background:transparent;min-width:44px}.toolbar button{padding:8px 12px}.toolbar a{color:inherit}
 ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;padding:24px;border-radius:18px;background:var(--card-background-color)}ha-card[hidden]{display:none}h2{margin:0 0 5px}h3{margin:14px 0 6px;font-size:1rem}small{display:block;color:var(--secondary-text-color);margin:6px 0;font-size:.85rem}.connection{margin:0}.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.status{font-size:.85rem;color:var(--secondary-text-color)}.history{min-height:280px;max-height:54vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:18px 0;white-space:pre-wrap}.history:empty:before{content:'How can I assist?';color:var(--secondary-text-color);padding:12px;background:var(--secondary-background-color);border-radius:12px;align-self:flex-start}.line{padding:11px 14px;background:var(--secondary-background-color);border-radius:14px;max-width:85%;overflow-wrap:anywhere}.line.user{align-self:flex-end;background:var(--primary-color);color:var(--text-primary-color,#fff)}form{display:flex;gap:8px;align-items:center}form input{flex:1;min-width:0;border:1px solid var(--divider-color);border-radius:11px;background:var(--secondary-background-color);padding:13px}form .send{background:var(--primary-color);color:var(--text-primary-color,#fff);border-color:transparent}.speak{min-width:48px;font-size:1.2rem}.tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.quick-commands button{margin:4px}.favourite-item{display:inline-flex;align-items:center;gap:0;margin:4px;border:1px solid var(--divider-color);border-radius:12px;overflow:hidden;background:var(--secondary-background-color)}.favourite-item button{margin:0;border:0;border-radius:0}.favourite-item .remove-favourite{min-width:44px;padding:8px 12px;border-left:1px solid var(--divider-color);color:var(--secondary-text-color);font-size:1.3rem;line-height:1}.favourite-item .remove-favourite:hover{background:var(--error-color,#db4437);color:white}.message-actions{display:flex;justify-content:flex-end;margin-top:5px}.message-actions button{min-height:32px;padding:3px 10px;font-size:.8rem;background:transparent;color:inherit;border-color:currentColor}.message-actions[hidden]{display:none}.quick-commands h3{margin:12px 0 4px}details{border-top:1px solid var(--divider-color);padding:12px 0}summary{cursor:pointer;font-weight:600}select{max-width:100%;padding:8px;border:1px solid var(--divider-color);border-radius:8px;background:var(--secondary-background-color)}.overview{display:flex;flex-wrap:wrap;gap:6px 18px;padding:8px 12px;margin-top:12px;background:var(--secondary-background-color);border-radius:10px}.overview small{margin:2px 0}.diag-card{padding:12px;margin:8px 0;background:var(--secondary-background-color);border-radius:10px;overflow-wrap:anywhere}.diag-card p{margin:4px 0}.voice-status{min-height:1.2em}.settings-fields label{display:block}.room-label{display:block;margin:10px 0}@media(max-width:600px){ha-card{margin:10px;padding:16px}.toolbar{gap:8px}.toolbar a{display:none}.toolbar-title{font-size:18px}.history{min-height:220px}form{flex-wrap:wrap}form input{flex:1 1 calc(100% - 70px)}.line{max-width:92%}}
+.sentence-box{padding:14px;border:1px solid var(--divider-color);border-radius:12px;margin:12px 0}.sentence-tokens{display:flex;flex-wrap:wrap;gap:8px;min-height:46px}.sentence-piece{display:inline-flex;align-items:center;flex-wrap:wrap;border:1px solid var(--primary-color);border-radius:10px;padding:4px;gap:3px}.sentence-piece.missing{border-style:dashed}.sentence-piece button{padding:6px 9px;min-height:36px}.sentence-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;font-size:1.1rem}.sentence-gap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sentence-gap input{max-width:180px}.sentence-player{width:100%;margin-top:8px}.phrase-suggestions button{border-style:dashed}.phrase-suggestions button.saved{border-style:solid}.sentence-empty{color:var(--secondary-text-color);align-self:center}audio{max-width:100%}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Jarvis Local</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
 <ha-card class="settings-card" hidden><h2>Jarvis settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Jarvis</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
@@ -33,11 +34,20 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 <small>Saved speech stays in Home Assistant. Prepare reusable clips or a whole sentence for more natural speech. Preparing missing audio uses your configured ElevenLabs provider and may use credits.</small>
 <div class="tools"><button type="button" class="refresh-voice-cache">Refresh voice cache</button></div>
 <p class="voice-cache-summary" role="status">Open to load saved speech.</p><small class="voice-cache-source"></small>
+<h3>Build a sentence</h3><small>Tap words or phrases below to add them in order. Solid buttons have a saved clip for this voice; dashed buttons may need recording. Up to 8 clips per sentence.</small>
+<div class="tools phrase-suggestions" aria-label="Words and phrases for sentence builder"></div>
+<div class="sentence-box"><div class="sentence-tokens" aria-label="Selected sentence clips"></div>
+<output class="sentence-text" aria-label="Built sentence"></output>
+<label class="sentence-gap">Pause between clips <input class="sentence-pause" type="range" min="0" max="500" step="10" value="20" aria-label="Pause between clips"><span class="sentence-pause-value">20 ms</span></label>
+<div class="tools"><button type="button" class="preview-sentence">Preview sentence</button><button type="button" class="undo-sentence">Undo last</button><button type="button" class="clear-sentence">Clear sentence</button><button type="button" class="example-sentence">Try an example</button></div>
+<small class="sentence-status" role="status">Preview plays on this device using saved clips only. No ElevenLabs requests or household actions.</small>
+<audio class="sentence-player" controls hidden aria-label="Built sentence preview"></audio></div>
+<details class="recording-options"><summary>Save a new recording</summary>
 <label>Phrase <input class="phrase-text" aria-label="Phrase to save" maxlength="200" placeholder="country"></label>
 <label>Save as <select class="phrase-kind" aria-label="Phrase type"><option value="clip">Reusable clip</option><option value="sentence">Whole sentence</option></select></label>
 <button type="button" class="prepare-phrase">Prepare and save phrase</button>
-<small>Room clips end with a full stop to finish the sentence. Clips are prepared only when you press the button.</small>
-<div class="tools phrase-suggestions" aria-label="Suggested genres and rooms"></div>
+<small>Preparing missing audio uses your configured provider and may use credits. Room clips end with a full stop, for example kitchen.</small>
+</details>
 <small class="phrase-message" role="status"></small><audio class="phrase-player" controls hidden aria-label="Saved phrase preview"></audio>
 <details class="clip-import-section"><summary>Import recordings</summary>
 <small>Choose room MP3s or a Jarvis phrase pack. Check the phrase labels before importing. Room clips need a final full stop, such as kitchen. Existing saved clips are kept. This does not contact ElevenLabs.</small>
@@ -59,6 +69,12 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.voice-cache-section').ontoggle=e=>{if(e.target.open)this.loadVoiceCache();};
     this.root.querySelector('.refresh-voice-cache').onclick=()=>this.loadVoiceCache();
     this.root.querySelector('.prepare-phrase').onclick=()=>this.preparePhrase();
+    this.root.querySelector('.preview-sentence').onclick=()=>this.previewSentence();
+    this.root.querySelector('.undo-sentence').onclick=()=>{this.sentenceParts=(this.sentenceParts || []).slice(0,-1);this.sentenceChanged();};
+    this.root.querySelector('.clear-sentence').onclick=()=>{this.sentenceParts=[];this.sentenceChanged();};
+    this.root.querySelector('.example-sentence').onclick=()=>{const room=(this.voiceCacheData?.rooms || []).find(r=>r.toLowerCase()==='kitchen') || 'kitchen';this.sentenceParts=['Playing','country','music from Spotify in the',room+'.'];this.sentenceChanged();};
+    this.root.querySelector('.sentence-pause').oninput=e=>{this.root.querySelector('.sentence-pause-value').textContent=e.target.value+' ms';this.sentenceChanged();};
+    this.renderSentence();
     this.root.querySelector('.clip-files').onchange=e=>this.loadClipFiles(e.target.files);
     this.root.querySelector('.import-clips').onclick=()=>this.importClips();
     this.root.querySelector('.check-bridge').onclick=()=>this.checkBridge();
@@ -80,9 +96,66 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.clear').onclick = () => {this.root.querySelector('.history').replaceChildren();this.conversationId=undefined;};
   }
   disconnectedCallback() {
+    this.invalidateSentencePreview();
     this.stopVoice(true);
     if(this.phraseUrl){URL.revokeObjectURL(this.phraseUrl);this.phraseUrl=null;}
     const player=this.root?.querySelector('.phrase-player');if(player)player.pause();
+  }
+  invalidateSentencePreview() {
+    this.sentenceRevision=(this.sentenceRevision || 0)+1;
+    const player=this.root?.querySelector('.sentence-player');if(player){player.pause();player.hidden=true;}
+    if(this.sentenceUrl){URL.revokeObjectURL(this.sentenceUrl);this.sentenceUrl=null;}
+  }
+  sentenceChanged() {
+    this.invalidateSentencePreview();this.sentenceMissing=[];this.renderSentence();
+    this.root.querySelector('.sentence-status').textContent='Ready to preview saved clips. No speech will be generated.';
+  }
+  addSentencePart(text) {
+    if((this.sentenceParts || []).length>=8){this.root.querySelector('.sentence-status').textContent='Use at most 8 clips. Remove a clip before adding another.';return;}
+    this.sentenceParts=[...(this.sentenceParts || []),text];this.sentenceChanged();
+  }
+  renderSentence() {
+    const parts=this.sentenceParts || [];
+    const container=this.root.querySelector('.sentence-tokens');container.replaceChildren();
+    this.root.querySelector('.sentence-text').textContent=parts.join(' ');
+    this.root.querySelector('.preview-sentence').disabled=!parts.length || !!this.previewingSentence;
+    this.root.querySelector('.undo-sentence').disabled=!parts.length;
+    this.root.querySelector('.clear-sentence').disabled=!parts.length;
+    if(!parts.length){const empty=document.createElement('span');empty.className='sentence-empty';empty.textContent='Choose clips below or try an example.';container.append(empty);}
+    parts.forEach((text,index)=>{
+      const row=document.createElement('span');row.className='sentence-piece';
+      const missing=(this.sentenceMissing || []).includes(text.trim().toLowerCase());
+      if(missing)row.className+=' missing';
+      const label=document.createElement('span');label.textContent=text;row.append(label);
+      const control=(caption,aria,action,disabled=false)=>{const b=document.createElement('button');b.type='button';b.textContent=caption;b.setAttribute('aria-label',aria);b.disabled=disabled;b.onclick=action;row.append(b);};
+      const move=delta=>{const next=[...this.sentenceParts];[next[index],next[index+delta]]=[next[index+delta],next[index]];this.sentenceParts=next;this.sentenceChanged();};
+      control('←','Move '+text+' earlier',()=>move(-1),index===0);
+      control('→','Move '+text+' later',()=>move(1),index===parts.length-1);
+      control('×','Remove clip '+(index+1)+': '+text,()=>{this.sentenceParts=this.sentenceParts.filter((_,i)=>i!==index);this.sentenceChanged();});
+      if(missing)control('Record clip','Prepare a recording for '+text,()=>{this.root.querySelector('.recording-options').open=true;this.root.querySelector('.phrase-text').value=text;this.root.querySelector('.phrase-kind').value='clip';this.root.querySelector('.phrase-text').focus();});
+      container.append(row);
+    });
+  }
+  async previewSentence() {
+    if(this.previewingSentence || !this.sentenceParts?.length)return;
+    const status=this.root.querySelector('.sentence-status');
+    if(!this.voiceCacheData?.import_voice_token){status.textContent='Refresh the voice cache before previewing.';return;}
+    const revision=this.sentenceRevision || 0;
+    this.previewingSentence=true;this.renderSentence();status.textContent='Joining saved clips…';
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/preview_voice_sentence',parts:[...this.sentenceParts],voice_token:this.voiceCacheData.import_voice_token,gap_ms:Number(this.root.querySelector('.sentence-pause').value)});
+      if(revision!==(this.sentenceRevision || 0))return;
+      this.sentenceMissing=result.missing || [];this.renderSentence();
+      if(this.sentenceMissing.length){status.textContent='No preview played. Missing recordings: '+this.sentenceMissing.join(', ')+'. Use Record clip to fill the recording field; generation requires Prepare and save phrase.';return;}
+      if(result.extension!=='wav' || !result.audio)throw new Error('Invalid preview audio');
+      const bytes=Uint8Array.from(atob(result.audio),c=>c.charCodeAt(0));
+      const player=this.root.querySelector('.sentence-player');player.pause();
+      if(this.sentenceUrl)URL.revokeObjectURL(this.sentenceUrl);
+      this.sentenceUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));player.src=this.sentenceUrl;player.hidden=false;
+      try {await player.play();if(revision===(this.sentenceRevision || 0))status.textContent='Playing your sentence from saved clips. No ElevenLabs requests.';}
+      catch(_){if(revision===(this.sentenceRevision || 0))status.textContent='Your sentence is ready. Tap Play below to listen.';}
+    } catch(e){if(revision===(this.sentenceRevision || 0))status.textContent='Could not preview sentence: '+(e.message || String(e));}
+    finally{this.previewingSentence=false;this.renderSentence();}
   }
   clipLabel(filename) {
     let text=filename.replace(/\.(mp3|wav|ogg|flac)$/i,'').replace(/[-_]+/g,' ').trim().toLowerCase();
@@ -151,16 +224,26 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const summary=this.root.querySelector('.voice-cache-summary');
     try {
       const data=await this._hass.callWS({type:'jarvis_local/voice_cache'});
+      if(this.voiceCacheData?.import_voice_token && this.voiceCacheData.import_voice_token!==data.import_voice_token)this.sentenceChanged();
       this.voiceCacheData=data;
       const mb=n=>(n/1048576).toFixed(1);
       summary.textContent=data.count+' recordings · '+mb(data.bytes)+' MB of '+mb(data.limit_bytes)+' MB limit · '+(data.free_bytes/1073741824).toFixed(1)+' GB free on Home Assistant storage.';
       const sourceNames={elevenlabs_cached:'Saved whole sentence',elevenlabs_generated:'Whole sentence requested from provider',elevenlabs_phrase_cached:'Reused saved clips or assembled response',elevenlabs_phrase_generated:'Generated missing clips',elevenlabs_category_cached:'Saved alternative response',xtts_cached:'Saved fallback voice',xtts_generated:'Fallback voice generated'};
       this.root.querySelector('.voice-cache-source').textContent='Latest Voice Manager request: '+(sourceNames[data.usage?.last_source] || 'None since restart')+'. '+(data.usage?.generated_clips || 0)+' new clips this session. Cache '+(data.enabled?'enabled':'disabled')+'; phrase assembly '+(data.phrases_enabled?'enabled':'disabled')+'. Use '+data.entity_id+' in your voice assistant. Stored at '+data.directory+'. Counters reset on restart; Home Assistant may also serve audio from its own cache. '+(!data.storage_available?'Storage limit reached; new audio will not be saved. ':'')+(data.skipped_writes?data.skipped_writes+' writes skipped to protect storage.':'');
       const suggestions=this.root.querySelector('.phrase-suggestions');suggestions.replaceChildren();
-      for(const text of ['Playing','music from Spotify in the','I requested','in','country','pop','rock','jazz',...(data.rooms || []).map(room=>room+'.')]) {
+      const voice=data.builder_voice;
+      const savedClips=(data.entries || []).filter(e=>['clip','imported_clip'].includes(e.kind) && voice && e.provider===voice.provider && e.voice_id===voice.voice_id);
+      const savedNames=new Set(savedClips.map(e=>e.text.toLowerCase()));
+      const words=['Playing','music from Spotify in the','I requested','in','easy listening','acoustic','rock','pop','work focus','cooking','romantic','sunday','relaxing','dinner','90s','80s','evening chill','afrikaans','country','jazz',...(data.rooms || []).map(room=>room+'.'),...savedClips.map(e=>e.text)];
+      const seen=new Set();
+      for(const text of words) {
+        const key=text.toLowerCase();if(seen.has(key))continue;seen.add(key);
         const button=document.createElement('button');button.type='button';button.textContent=text;
-        button.onclick=()=>{this.root.querySelector('.phrase-text').value=text;this.root.querySelector('.phrase-kind').value='clip';};suggestions.append(button);
+        const saved=savedNames.has(key);if(saved)button.className='saved';
+        button.title=saved?'Add saved clip':'Add phrase; preview will check for a saved recording';
+        button.onclick=()=>this.addSentencePart(text);suggestions.append(button);
       }
+      this.renderSentence();
       const entries=this.root.querySelector('.voice-cache-entries');entries.replaceChildren();
       if(!data.count){const p=document.createElement('p');p.textContent='No saved recordings yet. Prepare a phrase or use Jarvis Voice Manager.';entries.append(p);}
       for(const entry of data.entries || []) {
@@ -514,6 +597,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
+
+
+
 
 
 

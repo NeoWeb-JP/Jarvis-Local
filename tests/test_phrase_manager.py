@@ -117,7 +117,23 @@ class ManagerTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):await self.manager.import_clips([],self.manager.import_token())
         self.assertEqual(self.calls,[])
 
+    async def test_sentence_preview_uses_saved_audio_without_provider_calls(self):
+        items=[{'text':text,'extension':'wav','audio':base64.b64encode(audio()).decode('ascii')}
+               for text in ['playing','country','music from Spotify in the','kitchen.']]
+        token=self.manager.import_token()
+        await self.manager.import_clips(items,token)
+        before=await self.cache.snapshot()
+        result=await self.manager.preview_sentence([item['text'] for item in items],token,50)
+        self.assertEqual(result['extension'],'wav');self.assertEqual(result['missing'],[])
+        self.assertEqual(self.calls,[])
+        self.assertEqual(self.usage.snapshot()['total'],0)
+        self.assertEqual((await self.cache.snapshot())['bytes'],before['bytes'])
+        self.entry.options['elevenlabs_voice']='other'
+        with self.assertRaises(ValueError):await self.manager.preview_sentence(['country'],token)
+
 if __name__=='__main__':unittest.main()
+
+
 
 
 

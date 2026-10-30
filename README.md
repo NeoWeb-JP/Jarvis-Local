@@ -13,6 +13,10 @@ use ElevenLabs credits; opening or previewing the library does not.
 You can also **import your own room MP3s** or a private Jarvis phrase pack in
 **Voice cache → Import recordings**, without generating the clips again.
 
+**Build a sentence** lets you click clips into order, move or remove them, adjust
+the pause, and hear a joined preview on your device. Previews use saved clips
+only and never call ElevenLabs or run household commands.
+
 A Home Assistant conversation integration with a sidebar chat interface and rule-based household commands. The conversation agent does not require an LLM. Speech recognition, speech output, music and device integrations use the providers configured in Home Assistant and may use cloud services.
 
 ## Current scope
