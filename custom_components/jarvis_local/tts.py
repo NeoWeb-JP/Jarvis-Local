@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import logging
+import random
+from pathlib import Path
 
 from homeassistant.components.tts import TextToSpeechEntity
 from homeassistant.exceptions import HomeAssistantError
 
 from .voice_cache import VoiceCache
+from .voice_catalog_fallback import category_alternatives, load_catalogue
 from .voice_provider import generate_from_existing_tts
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +53,7 @@ class JarvisVoiceManager(TextToSpeechEntity):
             candidates.append(fallback)
 
         errors = []
-        for entity_id in candidates:
+        for index, entity_id in enumerate(candidates):
             if entity_id == self.entity_id or entity_id.startswith("tts.jarvis_voice_manager"):
                 continue
             try:
@@ -71,5 +74,44 @@ class JarvisVoiceManager(TextToSpeechEntity):
             except (HomeAssistantError, ValueError, OSError, TimeoutError) as err:
                 _LOGGER.warning("Jarvis TTS provider %s failed: %s", entity_id, err)
                 errors.append(f"{entity_id}: {type(err).__name__}")
+                if index == 0:
+                    # Only AFTER primary ElevenLabs generation fails: try an
+                    # already-recorded, semantically equivalent approved line.
+                    # This never calls a provider or weakens Guest privacy.
+                    alternate = await self._cached_primary_alternative(
+                        message, primary, revision, language or "en", options or {},
+                    )
+                    if alternate is not None:
+                        return alternate
 
         raise HomeAssistantError("Jarvis TTS primary and fallback failed: " + "; ".join(errors))
+
+    async def _cached_primary_alternative(
+        self, message, provider, revision, language, options,
+    ):
+        try:
+            catalogue = await self.hass.async_add_executor_job(
+                load_catalogue, Path(__file__).with_name("responses.json"),
+            )
+        except (OSError, ValueError):
+            _LOGGER.warning("Jarvis response catalogue unavailable; using normal fallback")
+            return None
+
+        guest = (
+            self.hass.states.is_state("input_boolean.guest_mode", "on")
+            or self.hass.states.is_state("input_boolean.jarvis_visitors_present", "on")
+        )
+        alternatives = list(category_alternatives(message, catalogue, guest=guest))
+        random.shuffle(alternatives)
+        for alternate in alternatives:
+            cached = await self._cache.find_cached_audio(
+                text=alternate, provider=provider, voice_id=revision,
+                model=provider, language=language, settings=options,
+            )
+            if cached is not None:
+                _LOGGER.info(
+                    "Jarvis using approved cached %s alternative before local XTTS",
+                    "Guest" if guest else "Home",
+                )
+                return cached
+        return None
