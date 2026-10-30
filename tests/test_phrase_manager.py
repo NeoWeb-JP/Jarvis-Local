@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from test_phrase_library import audio, VoiceCache
+import base64
 
 ROOT=Path(__file__).resolve().parents[1]/'custom_components'/'jarvis_local'
 
@@ -100,5 +101,23 @@ class ManagerTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):await self.manager.prepare_phrase('country','clip')
         self.assertEqual(self.calls,[])
 
+    async def test_import_matches_active_identity_without_calling_provider(self):
+        item={'text':'kitchen.','extension':'wav','audio':base64.b64encode(audio()).decode('ascii')}
+        token=self.manager.import_token()
+        result=await self.manager.import_clips([item],token)
+        self.assertEqual(result['imported'],['kitchen.']);self.assertEqual(self.calls,[])
+        await self.manager.async_get_tts_audio('I requested country in kitchen.','en',{})
+        self.assertNotIn(('tts.elevenlabs','kitchen.'),self.calls)
+
+    async def test_import_rejects_voice_changes_and_disabled_cache(self):
+        token=self.manager.import_token()
+        self.entry.options['elevenlabs_voice']='another'
+        with self.assertRaises(ValueError):await self.manager.import_clips([],token)
+        self.entry.options['cache_enabled']=False
+        with self.assertRaises(ValueError):await self.manager.import_clips([],self.manager.import_token())
+        self.assertEqual(self.calls,[])
+
 if __name__=='__main__':unittest.main()
+
+
 

@@ -1,5 +1,32 @@
 # Reusable voice phrases (0.28.0)
 
+## Import your own recordings (0.29.0)
+
+Open **Voice cache → Import recordings**. Choose your room MP3s (multiple files
+at once) or a private Jarvis JSON phrase pack. Review the editable phrase labels,
+confirm the recordings use your current Jarvis voice and settings, then select
+**Import recordings**. Choosing files only prepares the preview; the import
+button sends them to your own Home Assistant. No speech provider is called.
+
+Room labels end in a full stop, such as `master bedroom.`. Filename hyphens and
+underscores become spaces; `up-stairs.mp3` becomes `upstairs.`. You can correct
+any label before importing. Labels are speech fragments only: they do not rename
+Home Assistant areas, create targets, or change device-control behavior.
+
+Imports use the current primary TTS provider, voice, cache revision, English
+language and default request options. If voice settings change after you loaded
+the cache screen, refresh it before importing. Existing cached clips are kept,
+so repeated imports are safe. New recordings appear as `imported_clip` and use
+the same keys as generated clips. Music responses can reuse them immediately.
+
+All clips are decoded and validated before new files are saved. Invalid audio,
+silent recordings, duplicate labels, changed checksums and insufficient storage
+are rejected. Import at most 32 recordings, 2 MiB per recording and 8 MiB of
+audio per batch; clips are limited to 30 seconds. Concurrent cache writes or an
+unexpected filesystem error can still prevent some saves; the response reports
+completed and unsaved recordings so you can retry without replacing saved ones.
+Keep private phrase packs out of public GitHub repositories.
+
 Use **Jarvis sidebar → Voice cache** to see saved recordings, preview them on
 your browser, prepare reusable clips and save natural whole sentences.
 An administrator account is required. Opening the screen, choosing a suggestion,
@@ -93,4 +120,6 @@ Main has been updated without a PR, following the owner's preference. No live
 HA deployment, restart, pipeline change, paid pre-generation or Proxmox storage
 change is part of this implementation. After deployment, test one phrase in the
 screen, listen to its preview, then test the manager in your Assist pipeline.
+
+
 

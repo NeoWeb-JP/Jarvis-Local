@@ -30,7 +30,29 @@ async def voice_cache(hass,connection,msg):
     result['entity_id']=manager.entity_id
     result['enabled']=manager._entry.options.get('cache_enabled',True)
     result['phrases_enabled']=manager._entry.options.get('phrase_library_enabled',True)
+    result['import_voice_token']=manager.import_token()
     result['rooms']=[a.name for a in ar.async_get(hass).async_list_areas()]
+    connection.send_result(msg['id'],result)
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/import_voice_clips',
+    vol.Required('clips'):list,vol.Required('voice_token'):str})
+@websocket_api.async_response
+async def import_voice_clips(hass,connection,msg):
+    data=hass.data.get('jarvis_local',{})
+    manager=data.get('voice_manager')
+    if manager is None:
+        connection.send_error(msg['id'],'not_loaded','Jarvis Voice Manager is not loaded');return
+    lock=data.setdefault('phrase_generation_lock',asyncio.Lock())
+    if lock.locked():
+        connection.send_error(msg['id'],'busy','Another phrase operation is running');return
+    try:
+        async with lock:
+            result=await manager.import_clips(msg['clips'],msg['voice_token'])
+    except (HomeAssistantError,ValueError,OSError,TimeoutError,EOFError) as err:
+        connection.send_error(msg['id'],'import_failed',str(err) if isinstance(err,ValueError)
+                              else 'Could not import audio; check Home Assistant logs');return
     connection.send_result(msg['id'],result)
 
 
@@ -76,7 +98,7 @@ async def prepare_voice_phrase(hass,connection,msg):
 @callback
 def info(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
-    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.28.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
+    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':'0.29.0','settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/clear_diagnostics'})
@@ -157,7 +179,10 @@ async def check_voice_bridge(hass,connection,msg):
 
 def register(hass):
     for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
-                    voice_cache,voice_cache_audio,prepare_voice_phrase]:websocket_api.async_register_command(hass,handler)
+                    voice_cache,voice_cache_audio,prepare_voice_phrase,import_voice_clips]:websocket_api.async_register_command(hass,handler)
+
+
+
 
 
 

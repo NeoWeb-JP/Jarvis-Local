@@ -111,9 +111,42 @@ class PhraseLibrary:
         self.cache = cache
         self.normalise = normalise
 
+    @staticmethod
+    def clip_identity(identity):
+        return {**identity, 'model':identity['model']+':'+ASSEMBLY_VERSION+':clip'}
+
+    async def import_clips(self, clips, identity):
+        """Validate every clip before saving. Existing keys are preserved."""
+        prepared=[]
+        clip_identity=self.clip_identity(identity)
+        for text,extension,audio in clips:
+            converted=join_clips([await self.normalise(extension,audio)])
+            prepared.append((text,converted))
+        required=sum(len(audio)+2048 for _,audio in prepared)
+        state=await self.cache.snapshot(limit=0)
+        if state['bytes']+required > state['limit_bytes'] or state['free_bytes']-required < state['reserve_bytes']:
+            raise ValueError('Not enough cache space to import these recordings')
+        imported=[];existing=[];not_saved=[]
+        for text,audio in prepared:
+            async def generate(audio=audio):return 'wav',audio
+            try:
+                _,_,hit=await self.cache.get_or_generate_audio(
+                    text=text,**clip_identity,generate=generate,kind='imported_clip',
+                )
+                key=self.cache.key(text=text,**clip_identity,extension='wav')
+                saved=await asyncio.to_thread(self.cache.path_for(key,'wav').is_file)
+            except OSError:
+                not_saved.append(text)
+                continue
+            # A concurrent write can consume the remaining budget; report it.
+            if not saved:not_saved.append(text)
+            elif hit:existing.append(text)
+            else:imported.append(text)
+        return {'imported':imported,'existing':existing,'not_saved':not_saved}
+
     async def clip(self, text, identity, generate):
         text=text.strip().casefold()
-        clip_identity = {**identity, "model": identity["model"]+":"+ASSEMBLY_VERSION+":clip"}
+        clip_identity = self.clip_identity(identity)
         async def create():
             extension, audio = await generate(text)
             converted = await self.normalise(extension, audio)
@@ -141,4 +174,6 @@ class PhraseLibrary:
             text=message, **composed_identity, generate=create, kind="assembled",
         )
         return extension, audio, hit, generated
+
+
 

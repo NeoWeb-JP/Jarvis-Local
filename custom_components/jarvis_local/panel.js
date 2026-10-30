@@ -10,7 +10,7 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.28.0';
+      this.root.querySelector('.connection').textContent='v0.29.0';
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
@@ -39,6 +39,13 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 <small>Room clips end with a full stop to finish the sentence. Clips are prepared only when you press the button.</small>
 <div class="tools phrase-suggestions" aria-label="Suggested genres and rooms"></div>
 <small class="phrase-message" role="status"></small><audio class="phrase-player" controls hidden aria-label="Saved phrase preview"></audio>
+<details class="clip-import-section"><summary>Import recordings</summary>
+<small>Choose room MP3s or a Jarvis phrase pack. Check the phrase labels before importing. Room clips need a final full stop, such as kitchen. Existing saved clips are kept. This does not contact ElevenLabs.</small>
+<label>Recordings <input class="clip-files" aria-label="Recordings to import" type="file" accept=".mp3,.wav,.ogg,.flac,.json" multiple></label>
+<small class="clip-pack-info"></small><div class="clip-import-preview"></div>
+<label><input type="checkbox" class="clip-confirm"> These recordings use my current Jarvis voice and settings.</label>
+<button type="button" class="import-clips">Import recordings</button>
+<small class="clip-import-message" role="status"></small></details>
 <div class="voice-cache-entries"></div></details>
 <details class="quick-section"><summary>Favourites and frequently used</summary><section class="quick-commands" aria-label="Saved and frequently used commands"><h3>Favourites</h3><div class="favourites"></div><h3>Frequently used</h3><div class="frequent"></div><small>Tap a favourite to run it. Frequent commands fill the message box. Commands are stored on this device.</small><button type="button" class="favourite-current">Save typed command as favourite</button><button type="button" class="clear-frequent">Clear frequent commands</button><small class="quick-status" role="status"></small></section></details>
 <details><summary>Tools</summary><div class="tools"><button type="button" data-command="help">Help</button><button type="button" data-command="discover lights">Discover lights</button><button type="button" data-command="list zones">Zones</button><button type="button" data-command="which lights are on">Light status</button></div><label class="room-label">Chat room <select class="room" aria-label="Chat room"><option value="">No room selected</option></select></label><details><summary>Troubleshooting</summary><label><input type="checkbox" class="debug-toggle"> Enable debug and troubleshooting</label><small>Off by default. When enabled, recent request details are held temporarily in memory and routing messages are shown in chat. Disabling clears them.</small><div class="debug-content" hidden><button type="button" class="test-suite">Preview checks</button><div class="tools"><button type="button" class="refresh">Refresh</button><button type="button" class="copy-diag">Copy</button><button type="button" class="clear-diag">Clear</button></div><span class="copy-status" role="status"></span><div class="diagnostic-cards"></div><details><summary>Raw diagnostics</summary><pre class="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto"></pre></details></div></details></details></ha-card>`;
@@ -52,6 +59,8 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.voice-cache-section').ontoggle=e=>{if(e.target.open)this.loadVoiceCache();};
     this.root.querySelector('.refresh-voice-cache').onclick=()=>this.loadVoiceCache();
     this.root.querySelector('.prepare-phrase').onclick=()=>this.preparePhrase();
+    this.root.querySelector('.clip-files').onchange=e=>this.loadClipFiles(e.target.files);
+    this.root.querySelector('.import-clips').onclick=()=>this.importClips();
     this.root.querySelector('.check-bridge').onclick=()=>this.checkBridge();
     this.root.querySelector('.test-suite').onclick=()=>this.previewChecks();
     this.root.querySelector('.debug-toggle').onchange=e=>this.setDebug(e.target.checked);
@@ -74,6 +83,67 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.stopVoice(true);
     if(this.phraseUrl){URL.revokeObjectURL(this.phraseUrl);this.phraseUrl=null;}
     const player=this.root?.querySelector('.phrase-player');if(player)player.pause();
+  }
+  clipLabel(filename) {
+    let text=filename.replace(/\.(mp3|wav|ogg|flac)$/i,'').replace(/[-_]+/g,' ').trim().toLowerCase();
+    if(text==='up stairs')text='upstairs';
+    return text.replace(/\.+$/,'')+'.';
+  }
+  async loadClipFiles(files) {
+    const status=this.root.querySelector('.clip-import-message');
+    const preview=this.root.querySelector('.clip-import-preview');preview.replaceChildren();
+    this.pendingClips=[];this.root.querySelector('.clip-confirm').checked=false;
+    this.root.querySelector('.clip-pack-info').textContent='';
+    try {
+      if(!files?.length)return;
+      if(files.length>32)throw new Error('Choose at most 32 recordings');
+      const clips=[];let sourceVoice='';
+      for(const file of files) {
+        if(file.size>12*1024*1024)throw new Error('File is too large');
+        if(file.name.toLowerCase().endsWith('.json')) {
+          const pack=JSON.parse(await file.text());
+          if(pack.schema!==1 || pack.type!=='jarvis_voice_clips' || !Array.isArray(pack.clips))throw new Error('Not a Jarvis phrase pack');
+          clips.push(...pack.clips);if(typeof pack.voice_name==='string')sourceVoice=pack.voice_name;
+        } else {
+          const extension=file.name.split('.').pop().toLowerCase();
+          if(!['mp3','wav','ogg','flac'].includes(extension))throw new Error('Unsupported recording type');
+          if(file.size>2*1024*1024)throw new Error('Each recording must be at most 2 MB');
+          const bytes=new Uint8Array(await file.arrayBuffer());let raw='';
+          for(let offset=0;offset<bytes.length;offset+=32768)raw+=String.fromCharCode(...bytes.subarray(offset,offset+32768));
+          clips.push({text:this.clipLabel(file.name),extension,audio:btoa(raw)});
+        }
+      }
+      if(!clips.length || clips.length>32)throw new Error('Import between 1 and 32 recordings');
+      let total=0;
+      for(const clip of clips) {
+        if(typeof clip.text!=='string' || typeof clip.audio!=='string' || !['mp3','wav','ogg','flac'].includes(clip.extension))throw new Error('Invalid recording in phrase pack');
+        if(clip.audio.length>2796204)throw new Error('A recording is too large');
+        total+=clip.audio.length;
+      }
+      if(total>11184832)throw new Error('Recordings exceed the 8 MB import limit');
+      for(const clip of clips) {
+        const row=document.createElement('label');row.style.display='block';row.textContent='Phrase: ';
+        const input=document.createElement('input');input.value=clip.text;input.maxLength=80;input.setAttribute('aria-label','Imported phrase label');
+        input.oninput=()=>{clip.text=input.value;};row.append(input);preview.append(row);
+      }
+      this.pendingClips=clips;
+      this.root.querySelector('.clip-pack-info').textContent=clips.length+' recordings selected'+(sourceVoice?' · source voice: '+sourceVoice:'')+'.';
+      status.textContent='Review the labels, confirm the voice, then import.';
+    } catch(e){this.pendingClips=[];preview.replaceChildren();status.textContent='Could not read recordings: '+(e.message || String(e));}
+  }
+  async importClips() {
+    const button=this.root.querySelector('.import-clips');if(button.disabled)return;
+    const status=this.root.querySelector('.clip-import-message');
+    if(!this.pendingClips?.length){status.textContent='Choose recordings first.';return;}
+    if(!this.root.querySelector('.clip-confirm').checked){status.textContent='Confirm that the recordings match your current Jarvis voice and settings.';return;}
+    if(!this.voiceCacheData?.import_voice_token){status.textContent='Refresh the voice cache before importing.';return;}
+    button.disabled=true;status.textContent='Checking and saving recordings…';
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/import_voice_clips',clips:this.pendingClips,voice_token:this.voiceCacheData.import_voice_token});
+      status.textContent=result.imported.length+' recordings imported; '+result.existing.length+' existing clips kept.'+(result.not_saved.length?' '+result.not_saved.length+' could not be saved because storage filled up.':' No ElevenLabs requests were made.');
+      await this.loadVoiceCache();
+    } catch(e){status.textContent='Could not import recordings: '+(e.message || String(e));}
+    finally{button.disabled=false;}
   }
   async loadVoiceCache() {
     if(!this._hass || this.loadingVoiceCache)return;
@@ -444,5 +514,8 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
+
+
+
 
 

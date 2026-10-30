@@ -13,6 +13,7 @@ from .voice_catalog_fallback import category_alternatives, load_catalogue
 from .voice_provider import generate_from_existing_tts
 from .voice_usage import VoiceUsage
 from .phrase_library import PhraseLibrary, normalise_audio, phrase_parts
+from .phrase_import import decode_clips
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +47,26 @@ class JarvisVoiceManager(TextToSpeechEntity):
     async def _normalise(self, extension, audio):
         from homeassistant.components.ffmpeg import get_ffmpeg_manager
         return await normalise_audio(extension, audio, get_ffmpeg_manager(self.hass).binary)
+
+    def import_identity(self):
+        config=self._entry.options
+        provider=config.get('primary_tts',DEFAULT_PROVIDER)
+        voice=config.get('elevenlabs_voice','')
+        return dict(provider=provider,voice_id=f"{config.get('cache_revision','v1')}:{voice}",
+                    model=provider,language='en',settings={'voice':voice} if voice else {})
+
+    def import_token(self):
+        return self._cache.key(text='import voice identity',**self.import_identity())
+
+    async def import_clips(self, clips, voice_token):
+        if not self._entry.options.get('cache_enabled',True):
+            raise ValueError('Enable the voice cache before importing recordings')
+        if voice_token != self.import_token():
+            raise ValueError('Voice settings changed; refresh the voice cache before importing')
+        decoded=decode_clips(clips)
+        identity=self.import_identity()
+        # Import never uses generate_from_existing_tts or changes the voice pipeline.
+        return await self._phrases.import_clips(decoded,identity)
 
     async def prepare_phrase(self, text, kind):
         """Explicit admin generation; does not run any household action."""
@@ -189,5 +210,7 @@ class JarvisVoiceManager(TextToSpeechEntity):
                 )
                 return cached
         return None
+
+
 
 
