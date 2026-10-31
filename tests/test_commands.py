@@ -222,6 +222,13 @@ class Commands(unittest.TestCase):
                        'What lights do you control?', 'What lights are available?',
                        'Show me the lights.'):
             self.assertEqual(lighting(self.hass,phrase)['response'],expected)
+    def test_conversational_followups(self):
+        from jarvis_test.followup import additional_room
+        self.assertEqual(followup('Actually, turn them off'),('turn off __previous_lights__',False))
+        self.assertEqual(followup('No, actually, make them brighter'),('brighten __previous_lights__',False))
+        self.assertEqual(additional_room('And the dining room lights', 'turn_on'),'turn on dining room lights')
+        self.assertIsNone(additional_room('And the dining room lights', None))
+        self.assertIsNone(additional_room('And those lights', 'turn_on'))
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()
