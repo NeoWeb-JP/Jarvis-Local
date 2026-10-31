@@ -44,7 +44,7 @@ def _lighting(hass, text, previous=None):
     text=norm(text)
     rooms,unassigned=inventory(hass)
     all_ids=sorted({i for r in rooms.values() for i in r['lights']} | set(unassigned))
-    if text in {'discover lights','list lights','list rooms','list areas','list zones'}:
+    if text in {'discover lights','list lights','list rooms','list areas','list zones','what lights can you control','which lights can you control','what lights do you control','what lights are available','show me the lights'}:
         if text=='list zones':
             return {'kind':'text','response':'Geographic presence zones: '+(', '.join(display_name(s) for s in hass.states.async_all('zone')) or 'none')+'.', 'label':'list geographic zones'}
         lines=[r['name']+': '+(', '.join(display_name(hass.states.get(i)) for i in r['lights']) or 'no exposed lights') for r in rooms.values()]
