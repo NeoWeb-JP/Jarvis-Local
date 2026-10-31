@@ -117,7 +117,7 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
     async def test_stop_cancels_pending_clarification(self):
         await self.agent.async_handle(UserInput('lamp on'))
         reply=await self.agent.async_handle(UserInput('no stop'))
-        self.assertIn('Stopped', reply.response.speech)
+        self.assertEqual(reply.response.speech, '')
         self.assertEqual(self.hass.services.calls, [])
         self.assertFalse(self.agent._pending_clarifications)
 
