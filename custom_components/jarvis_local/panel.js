@@ -10,10 +10,15 @@ class JarvisLocalPanel extends HTMLElement {
       const id=this.config.agent_id || 'conversation.jarvis_local_test';
       const state=hass.states[id];
       const available=!!state && !['unavailable','unknown'].includes(state.state);
-      this.root.querySelector('.connection').textContent='v0.33.0';
+      this.renderVersion();
       this.root.querySelector('.overview-agent').textContent='Agent: '+(available?'Available':'Not available');
       this.updateOverview();
     }
+  }
+  renderVersion() {
+    const version=this.integrationVersion;
+    this.root.querySelector('.connection').textContent=typeof version==='string' && version.trim()
+      ? 'v'+version : 'Installed version unavailable';
   }
   getCardSize() { return 7; }
   build() {
@@ -640,6 +645,8 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       select.replaceChildren(new Option('No room selected',''));
       for(const area of data.areas) select.add(new Option(area.name,area.id));
       select.value=selected;
+      this.integrationVersion=data.version;
+      this.renderVersion();
       this.debugEnabled=data.debug_enabled===true;
       this.root.querySelector('.debug-toggle').checked=this.debugEnabled;
       this.root.querySelector('.debug-content').hidden=!this.debugEnabled;

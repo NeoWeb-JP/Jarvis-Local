@@ -19,6 +19,7 @@ jobs:
           sudo apt-get install -y ffmpeg
       - run: python -m pytest -q tests
       - run: node tests/test_panel_voice.js
+      - run: node tests/test_panel_version.js
       - run: node tests/test_panel_favourites.js
       - run: node tests/test_panel_satellite_settings.js
       - run: node tests/test_panel_stop_diagnostics.js

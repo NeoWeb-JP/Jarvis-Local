@@ -1,5 +1,7 @@
 """Home Voice Assistant integration and authenticated sidebar chat."""
 from pathlib import Path
+from urllib.parse import quote
+from .version import read_version
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers import config_validation as cv
@@ -14,6 +16,7 @@ async def async_setup(hass, config):
 
 async def async_setup_entry(hass, entry):
     data = hass.data.setdefault(DOMAIN, {})
+    data["version"] = await hass.async_add_executor_job(read_version)
     from .settings import load
     data["settings"] = await load(hass)
     from homeassistant.helpers.storage import Store
@@ -49,7 +52,7 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass, frontend_url_path="jarvis-local-app", webcomponent_name="jarvis-local-panel",
             sidebar_title="Home Voice Assistant", sidebar_icon="mdi:robot",
-            module_url="/jarvis_local/panel.js?v=0.33.0",
+            module_url="/jarvis_local/panel.js?v=" + quote(data["version"], safe=""),
             config={"agent_id":data["agent"].entity_id}, require_admin=True)
     except Exception:
         await data["timers"].stop()

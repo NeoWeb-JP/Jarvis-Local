@@ -49,6 +49,8 @@ Back up before updating. Install an offered update in HACS or Home Assistant, re
 
 Do not commit Home Assistant backups, secrets, access tokens, logs, or personal configuration.
 
+The installed version shown in the sidebar and diagnostics API comes from `manifest.json`. Entry setup and reload read that value and use it to version the panel URL, so a new release loads its matching frontend after a browser refresh. HACS may show a newer downloaded release until Home Assistant has loaded it; the sidebar reports the backend currently loaded.
+
 For a release, verify changes, run the checks, increment the version in `manifest.json`, publish a GitHub release with a matching version tag and release notes, then test the offered HACS update on Home Assistant. GitHub Actions are supplied but must pass on the actual repository; they are not a substitute for live testing.
 
 ## Speaking and optional speaker identification
