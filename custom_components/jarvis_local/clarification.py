@@ -40,7 +40,13 @@ def request(hass, text, area):
 
 def resolve(pending, text):
     answer=norm(text)
-    if answer in {'cancel','cancel that','never mind','nevermind'}:return 'cancel',None
+    if answer in {'cancel','cancel that','never mind','nevermind','stop','no stop','stop that','leave it'}:return 'cancel',None
+    if answer in {'no the other lamp','the other lamp','other lamp','no the other one','the other one'}:
+        previous=pending.get('previous_id')
+        alternatives=[item['id'] for item in pending['matches'] if item['id'] != previous]
+        if previous and len(alternatives)==1:
+            return 'resolved',alternatives[0]
+        return 'unclear',None
     answer=re.sub(r'^(?:the |in the |in )','',answer)
     answer=re.sub(r' (?:one|light|please)$','',answer).strip()
     found=[]
