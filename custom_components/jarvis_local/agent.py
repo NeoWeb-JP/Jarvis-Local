@@ -13,6 +13,7 @@ from .followup import followup, followup_steps
 from .clarification import request as clarification_request, resolve as clarification_resolve
 from .personality import confirmation
 from .transcript import correct
+from .corrections import final_request
 from .verify import verify
 from .device_control import apply_lighting, lighting_report
 from .discovery import lighting, display_name
@@ -63,6 +64,7 @@ class JarvisAgent(conversation.ConversationEntity):
         continue_conversation=False
         followup_used=False
         corrections=[]
+        self_corrected=False
         command_text=user_input.text
         cfg=self.hass.data.get('jarvis_local',{}).get('voice_id_config',{})
         voice_profile=bridge_profile(command_text,cfg.get('profiles',{}))
@@ -73,6 +75,9 @@ class JarvisAgent(conversation.ConversationEntity):
         original_text=str(command_text)
         try:
             area=area_override or source_area(self.hass,user_input)
+            command_text, self_corrected = final_request(command_text)
+            if self_corrected:
+                corrections.append('superseded earlier command')
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
                 command_text,corrections=correct(self.hass,command_text,area)
             timer_request=parse_timer(command_text)
@@ -230,6 +235,8 @@ class JarvisAgent(conversation.ConversationEntity):
                     action='off' if steps[0]['name']=='turn_off' else 'on'
                     replies.insert(0,await confirmation(self.hass,user_input.context,'Turning '+action+' the lights.',action=action))
                 speech = ' '.join(r for r in replies if r)
+                if outcome == 'completed' and self_corrected and not preview:
+                    speech = 'Make up your bloody mind, my bru. ' + speech
                 if outcome in {'completed', 'partial'}:
                     light_ids=[]
                     invalidated=False
