@@ -9,7 +9,7 @@ from .speaker_identity import unwrap, bridge_profile
 from .morning import morning_reply
 from .social import social_reply
 from .timers import parse as parse_timer
-from .followup import followup, followup_steps
+from .followup import followup, followup_steps, additional_room
 from .clarification import request as clarification_request, resolve as clarification_resolve
 from .personality import confirmation
 from .transcript import correct
@@ -122,8 +122,12 @@ class JarvisAgent(conversation.ConversationEntity):
                         steps=followup_steps(self.hass,resolved_text,previous['ids'])
                         followup_used=True
                     else:
-                        resolved_text=apply_room(command_text,area,self.hass)
+                        previous=self._recent_lights.get(memory_key)
+                        extra=additional_room(command_text, previous.get('action') if previous else None)
+                        resolved_text=apply_room(extra or command_text,area,self.hass)
                         steps, preview = plan(self.hass, resolved_text,area)
+                        if extra:
+                            followup_used=True
         except ValueError as err:
             recovered = recover_off(self.hass, command_text) if getattr(user_input, 'device_id', None) else None
             if recovered is not None:
@@ -250,7 +254,10 @@ class JarvisAgent(conversation.ConversationEntity):
                     if invalidated and not light_ids:
                         self._recent_lights.pop(memory_key,None)
                     elif light_ids:
-                        self._recent_lights[memory_key]={'at':monotonic(),'ids':list(dict.fromkeys(light_ids))}
+                        self._recent_lights[memory_key]={'at':monotonic(),'ids':list(dict.fromkeys(light_ids)),
+                            'action':next((st['name'] for st in reversed(steps)
+                                           if st.get('kind') in {'light','switch_light'} and st.get('succeeded')
+                                           and st.get('name') in {'turn_on','turn_off'}),None)}
                     while len(self._recent_lights)>64:
                         del self._recent_lights[next(iter(self._recent_lights))]
         if outcome in {'failed','rejected'}:
