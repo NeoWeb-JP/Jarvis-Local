@@ -89,7 +89,7 @@ class JarvisAgent(conversation.ConversationEntity):
             if stop_requested:
                 self._pending_clarifications.pop(memory_key,None)
                 self._recent_lights.pop(memory_key,None)
-                steps=[{'kind':'text','response':'Stopped. No new action was started.','label':'stop pending conversation'}]
+                steps=[{'kind':'text','response':'','label':'stop pending conversation'}]
             elif social is not None:
                 steps=[{'kind':'text','response':social,'label':'answer greeting'}]
             elif timer_request is not None:
