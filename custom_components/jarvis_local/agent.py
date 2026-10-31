@@ -236,7 +236,7 @@ class JarvisAgent(conversation.ConversationEntity):
                     replies.insert(0,await confirmation(self.hass,user_input.context,'Turning '+action+' the lights.',action=action))
                 speech = ' '.join(r for r in replies if r)
                 if outcome == 'completed' and self_corrected and not preview:
-                    speech = 'Make up your bloody mind, my bru. ' + speech
+                    speech = ("Changed your mind? No problem. " if self.hass.states.get('input_boolean.guest_mode') and self.hass.states.get('input_boolean.guest_mode').state == 'on' else 'Make up your bloody mind, my bru. ') + speech
                 if outcome in {'completed', 'partial'}:
                     light_ids=[]
                     invalidated=False
