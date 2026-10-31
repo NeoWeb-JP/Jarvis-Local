@@ -662,6 +662,21 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     for(const record of records.slice().reverse()){
       const card=document.createElement('div');card.className='diag-card';
       const fields=[['When',record.time],['Heard',record.received_text],['Understood',record.resolved_text || record.received_text],['Actions',(record.steps || []).map(step=>step.label || step.kind).join('; ') || 'None'],['Result',record.outcome],['Speaker',record.speaker_personalized?'Profile used':'No profile used'],['Reply',record.response]];
+      if(record.stop){
+        const reasons={
+          missing_satellite:'No Assist satellite was supplied.',
+          unmapped_satellite:'No media player is mapped to this satellite.',
+          invalid_mapping:'The saved media player mapping is invalid.',
+          service_error:'Media stop request failed. Check the Home Assistant log.',
+          service_timeout:'Media stop request timed out. Playback is not verified.',
+          request_sent:'Stop request sent. Playback and hardware interruption are not verified.',
+        };
+        fields.push(['Assist satellite',record.satellite_id || 'Not supplied'],
+          ['Stop player',record.stop.media_player_id || 'None selected'],
+          ['Stop request',record.stop.service_called?'Attempted':'No service call'],
+          ['Stop result',reasons[record.stop.reason] || 'Unknown stop result.']);
+        fields[fields.findIndex(([label])=>label==='Reply')]=['Reply','Silent'];
+      }
       for(const [label,value] of fields){const row=document.createElement('p');row.textContent=label+': '+(value || '—');card.append(row);}container.append(card);
     }
   }

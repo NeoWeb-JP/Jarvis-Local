@@ -78,7 +78,28 @@ class JarvisAgent(conversation.ConversationEntity):
         if is_spoken_stop(command_text):
             self._pending_clarifications.pop(memory_key, None)
             self._recent_lights.pop(memory_key, None)
-            await stop_player(self.hass, user_input)
+            stop_report = await stop_player(self.hass, user_input)
+            # Match the existing opt-in, bounded diagnostics history. Never speak
+            # routing failures or claim that playback or barge-in was verified.
+            if self.hass.data.get('jarvis_local', {}).get('debug_enabled', False):
+                record = {
+                    'time': datetime.now(timezone.utc).isoformat(),
+                    'received_text': original_text, 'resolved_text': original_text,
+                    'speaker_personalized': bool(voice_profile),
+                    'transcript_corrections': [], 'device_id': getattr(user_input, 'device_id', None),
+                    'satellite_id': getattr(user_input, 'satellite_id', None),
+                    'area': None, 'preview': False, 'followup_used': False,
+                    'steps': ([{'kind': 'media_stop', 'label': 'send silent stop request',
+                                'data': {'entity_id': stop_report['media_player_id']},
+                                'unverified': True}] if stop_report['service_called'] else []),
+                    'outcome': stop_report['outcome'],
+                    'error': ('Media stop request failed.' if stop_report['outcome'] == 'failed' else None),
+                    'stop': stop_report, 'response': '',
+                    'elapsed_ms': round((perf_counter() - start) * 1000),
+                }
+                history = self.hass.data['jarvis_local'].setdefault('diagnostics', [])
+                history.append(record)
+                del history[:-20]
             result.async_set_speech('', extra_data={'jarvis_local': {'trackable': False}})
             return conversation.ConversationResult(
                 response=result, conversation_id=conversation_id,

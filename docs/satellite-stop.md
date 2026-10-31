@@ -50,3 +50,19 @@ Stop also clears the originating conversation's pending clarification and
 lighting follow-up. It bypasses Jarvis's action lock, without cancelling its
 running task or unrelated Home Assistant scripts, timers or automations.
 Other cancellation phrases retain their existing dialogue behavior.
+
+## Troubleshooting silent stops
+
+Enable **Tools → Troubleshooting → Enable debug and troubleshooting**, then
+make a spoken stop request and refresh the diagnostics. Stop cards show the
+originating satellite, the exact mapped player, whether a service call was
+attempted, and the result. Missing satellite IDs, missing or invalid mappings,
+service failures and timeouts are reported without speaking an acknowledgement.
+
+“Stop request sent” means Home Assistant accepted the service call. It does not
+confirm that audio stopped or that the hardware heard a wake word during
+playback. Requests intercepted before reaching Jarvis cannot appear here.
+
+Like other diagnostics, stop records are disabled by default, kept only in
+memory, limited to the latest 20 requests and cleared when troubleshooting is
+disabled. They contain the decoded stop text, never the voice bridge envelope.
