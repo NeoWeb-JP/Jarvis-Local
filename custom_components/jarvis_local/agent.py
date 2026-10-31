@@ -5,6 +5,9 @@ import re
 from time import perf_counter, monotonic
 from uuid import uuid4
 from .satellite_stop import is_spoken_stop, stop_player
+from .understanding import normalize_request
+from .media_search import parse_search
+from .media_search_adapters import search as search_media
 from .settings import get
 from .speaker_identity import unwrap, bridge_profile
 from .morning import morning_reply
@@ -57,6 +60,7 @@ class JarvisAgent(conversation.ConversationEntity):
         resolved_text=""
         outcome='rejected'
         failure=None
+        media_report=None
         conversation_id=user_input.conversation_id or uuid4().hex
         memory_key=(getattr(user_input.context,'user_id',None),conversation_id,getattr(user_input,'satellite_id',None) or getattr(user_input,'device_id',None),getattr(area_override,'id',None))
         now=monotonic()
@@ -74,6 +78,8 @@ class JarvisAgent(conversation.ConversationEntity):
             command_text,voice_profile=unwrap(command_text,cfg.get('secret'),cfg.get('profiles',{}),self._voice_markers)
             if not command_text:command_text=''
         original_text=str(command_text)
+        command_text,language_changes=normalize_request(command_text)
+        corrections.extend(language_changes)
         # Bypass the action lock so running routines cannot delay a stop.
         if is_spoken_stop(command_text):
             self._pending_clarifications.pop(memory_key, None)
@@ -84,9 +90,9 @@ class JarvisAgent(conversation.ConversationEntity):
             if self.hass.data.get('jarvis_local', {}).get('debug_enabled', False):
                 record = {
                     'time': datetime.now(timezone.utc).isoformat(),
-                    'received_text': original_text, 'resolved_text': original_text,
+                    'received_text': original_text, 'resolved_text': command_text,
                     'speaker_personalized': bool(voice_profile),
-                    'transcript_corrections': [], 'device_id': getattr(user_input, 'device_id', None),
+                    'transcript_corrections': corrections, 'device_id': getattr(user_input, 'device_id', None),
                     'satellite_id': getattr(user_input, 'satellite_id', None),
                     'area': None, 'preview': False, 'followup_used': False,
                     'steps': ([{'kind': 'media_stop', 'label': 'send silent stop request',
@@ -109,7 +115,10 @@ class JarvisAgent(conversation.ConversationEntity):
             command_text, self_corrected = final_request(command_text)
             if self_corrected:
                 corrections.append('superseded earlier command')
-            if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
+                command_text,language_changes=normalize_request(command_text)
+                corrections.extend(language_changes)
+            media_request=parse_search(command_text)
+            if media_request is None and (getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None)):
                 command_text,stt_corrections=correct(self.hass,command_text,area)
                 corrections.extend(stt_corrections)
             stop_requested=bool(re.fullmatch(r'(?:jarvis[ ,]+)?(?:no[ ,]+)?(?:stop|stop that|cancel|cancel that|never mind|nevermind|leave it)[.!? ]*',command_text.strip(),re.I))
@@ -117,10 +126,16 @@ class JarvisAgent(conversation.ConversationEntity):
             pending=self._pending_clarifications.get(memory_key)
             resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
             social = social_reply(command_text, voice_profile, self.hass.data.setdefault('jarvis_local',{}).setdefault('social_history',{})) if not pending else None
-            if stop_requested:
+            if media_request is not None:
                 self._pending_clarifications.pop(memory_key,None)
                 self._recent_lights.pop(memory_key,None)
-                steps=[{'kind':'text','response':'','label':'stop pending conversation'}]
+                steps=[media_request]
+                preview=media_request['preview']
+                resolved_text=command_text
+            elif stop_requested:
+                self._pending_clarifications.pop(memory_key,None)
+                self._recent_lights.pop(memory_key,None)
+                steps=[{'kind':'text','response':'Cancelled. Nothing was run.' if pending and resolution == 'cancel' else '','label':'stop pending conversation'}]
             elif social is not None:
                 steps=[{'kind':'text','response':social,'label':'answer greeting'}]
             elif timer_request is not None:
@@ -169,7 +184,7 @@ class JarvisAgent(conversation.ConversationEntity):
                         if extra:
                             followup_used=True
         except ValueError as err:
-            recovered = recover_off(self.hass, command_text) if getattr(user_input, 'device_id', None) else None
+            recovered = recover_off(self.hass, command_text) if (getattr(user_input, 'device_id', None) or getattr(user_input, 'satellite_id', None)) else None
             if recovered is not None:
                 # Retry with the same context; never infer voice recovery from chat.
                 from dataclasses import replace
@@ -191,6 +206,10 @@ class JarvisAgent(conversation.ConversationEntity):
                 async with self._lock:
                     try:
                         for step in steps:
+                            if step['kind'] == 'media_search':
+                                media_report=await search_media(self.hass,step)
+                                replies.append(media_report['response'])
+                                continue
                             if step['kind'] == 'timer':
                                 replies.append(await self.hass.data['jarvis_local']['timers'].handle(getattr(user_input,'satellite_id',None),step['data']))
                                 continue
@@ -279,7 +298,7 @@ class JarvisAgent(conversation.ConversationEntity):
                     action='off' if steps[0]['name']=='turn_off' else 'on'
                     replies.insert(0,await confirmation(self.hass,user_input.context,'Turning '+action+' the lights.',action=action))
                 speech = ' '.join(r for r in replies if r)
-                if outcome == 'completed' and self_corrected and not preview:
+                if outcome == 'completed' and self_corrected and not preview and media_report is None:
                     speech = ("Changed your mind? No problem. " if self.hass.states.get('input_boolean.guest_mode') and self.hass.states.get('input_boolean.guest_mode').state == 'on' else 'Make up your bloody mind, my bru. ') + speech
                 if outcome in {'completed', 'partial'}:
                     light_ids=[]
@@ -320,6 +339,9 @@ class JarvisAgent(conversation.ConversationEntity):
         trackable = (outcome == 'completed' and not preview and not continue_conversation
                      and bool(steps) and all(step.get('kind') in {'light', 'switch_light', 'brightness', 'media_control', 'music', 'action', 'status'}
                                              and not step.get('unverified') for step in steps))
-        result.async_set_speech(speech, extra_data={'jarvis_local': {'trackable': trackable}})
+        metadata={'trackable':trackable}
+        if media_report is not None:
+            metadata['media_search']=media_report
+        result.async_set_speech(speech, extra_data={'jarvis_local': metadata})
         _LOGGER.debug('Jarvis local processing: %.0f ms', (perf_counter()-start)*1000)
         return conversation.ConversationResult(response=result, conversation_id=conversation_id, continue_conversation=continue_conversation)

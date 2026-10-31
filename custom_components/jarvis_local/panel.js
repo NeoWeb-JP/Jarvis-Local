@@ -31,14 +31,15 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 .sentence-box{padding:14px;border:1px solid var(--divider-color);border-radius:12px;margin:12px 0}.sentence-tokens{display:flex;flex-wrap:wrap;gap:8px;min-height:46px}.sentence-piece{display:inline-flex;align-items:center;flex-wrap:wrap;border:1px solid var(--primary-color);border-radius:10px;padding:4px;gap:3px}.sentence-piece.missing{border-style:dashed}.sentence-piece button{padding:6px 9px;min-height:36px}.sentence-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;font-size:1.1rem}.sentence-gap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sentence-gap input{max-width:180px}.sentence-player{width:100%;margin-top:8px}.phrase-suggestions button{border-style:dashed}.phrase-suggestions button.saved{border-style:solid}.sentence-empty{color:var(--secondary-text-color);align-self:center}audio{max-width:100%}
 .recording-search-controls{align-items:flex-end}.recording-search-controls label{display:flex;flex:1 1 260px;flex-direction:column;gap:6px}.recording-search{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--divider-color);border-radius:10px;background:var(--secondary-background-color);padding:10px}
 .phrase-suggestions{display:block}.phrase-category{margin:12px 0}.phrase-category h4{margin:0 0 8px;font-size:.95rem}.phrase-category .tools{margin:0}
+.media-search-settings{border:1px solid var(--divider-color);border-radius:12px;padding:14px;margin:14px 0}.media-search-settings label{display:block;margin:8px 0}.media-subscriptions{display:flex;flex-wrap:wrap;gap:6px 18px}.tmdb-token{display:block;box-sizing:border-box;width:100%;padding:10px}.media-query{box-sizing:border-box;max-width:100%;padding:10px;margin:8px}.media-search-results a{color:var(--primary-color)}
 .satellite-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;padding:14px;margin:12px 0;background:var(--secondary-background-color);border-radius:10px}.satellite-row label{flex:1 1 260px;min-width:0}.satellite-row select{display:block;box-sizing:border-box;width:100%;min-height:44px;margin-top:6px}.satellite-empty[hidden]{display:none}
 .recording-pagination{align-items:center;justify-content:space-between}.recordings-page-status{color:var(--secondary-text-color)}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Declan</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
-<ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button></div><h3>Satellite audio stops</h3><small>Choose the media player that belongs to each Assist satellite. “Stop”, “Be quiet” and “Shut up” stop only that player, with no spoken reply. Players are never chosen automatically.</small><div class="satellite-fields"></div><small class="satellite-empty">No satellites mapped. Spoken stop will not stop a media player.</small><div class="tools"><button type="button" class="add-satellite">Add satellite mapping</button><button type="button" class="check-satellite-mappings">Check saved mappings</button></div><small class="satellite-check-message" role="status"></small><div class="satellite-check-results"></div><small>Changes take effect when you save settings. The satellite must hear the wake word during playback for voice interruption to work.</small><div class="tools"><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
+<ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button></div><h3>Film and TV search</h3><fieldset class="media-search-settings"><legend>UK streaming availability</legend><small>Local HA media folders and the connected Jellyfin integration are searched first. The optional TMDB token enables UK catalogue listings; it does not log in to your subscriptions.</small><div class="media-subscriptions"><label><input type="checkbox" value="netflix"> Netflix</label><label><input type="checkbox" value="prime"> Prime Video</label><label><input type="checkbox" value="disney"> Disney+</label><label><input type="checkbox" value="paramount"> Paramount+</label></div><label>TMDB API read access token <input type="password" class="tmdb-token" aria-label="TMDB API read access token" autocomplete="new-password"></label><small class="tmdb-token-status"></small><label><input type="checkbox" class="clear-tmdb-token"> Remove saved token</label><div class="tools"><button type="button" class="save-media-search">Save media search settings</button><a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer">TMDB token setup</a></div><small class="media-settings-message" role="status"></small><small>Catalogue availability: JustWatch via TMDB. Listings can differ by plan, season, add-on and date. No paid-account passwords are needed.</small></fieldset><h3>Satellite audio stops</h3><small>Choose the media player that belongs to each Assist satellite. “Stop”, “Be quiet” and “Shut up” stop only that player, with no spoken reply. Players are never chosen automatically.</small><div class="satellite-fields"></div><small class="satellite-empty">No satellites mapped. Spoken stop will not stop a media player.</small><div class="tools"><button type="button" class="add-satellite">Add satellite mapping</button><button type="button" class="check-satellite-mappings">Check saved mappings</button></div><small class="satellite-check-message" role="status"></small><div class="satellite-check-results"></div><small>Changes take effect when you save settings. The satellite must hear the wake word during playback for voice interruption to work.</small><div class="tools"><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Declan</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
 <div class="overview" aria-label="Declan overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small><button type="button" class="check-bridge">Check bridge connection</button><small class="bridge-status" role="status"></small></div><div class="history" role="log" aria-live="polite"></div>
 <form><input aria-label="Message to Declan" placeholder="Ask Declan anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Declan">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Declan reply</button>
-<details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant that uses this conversation agent. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
+<details class="media-search-section"><summary>Find films and TV</summary><small>Search only: HA media folders, Jellyfin, then UK streaming availability. This will not start movie time or control a screen.</small><label>Title <input type="search" class="media-query" aria-label="Film or TV title" maxlength="200" placeholder="e.g. Desperate Housewives"></label><button type="button" class="search-media">Search libraries and services</button><small class="media-search-status" role="status"></small><div class="media-search-results"></div><section class="media-search-credits" aria-label="Media search credits"><h3>Media search credits</h3><a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer"><img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" width="90" style="height:auto" referrerpolicy="no-referrer"></a><small>This product uses the TMDB API but is not endorsed or certified by TMDB.</small><small>Streaming availability data supplied by <a href="https://www.justwatch.com" target="_blank" rel="noopener noreferrer">JustWatch</a> via TMDB.</small></section></details><details class="voice-options"><summary>Voice settings</summary><label>Voice assistant <select class="voice-pipeline" aria-label="Voice assistant"><option value="">Loading assistants…</option></select></label><small>Select an assistant that uses this conversation agent. Tap the microphone again to finish speaking. Voice input uses the assistant's speech-to-text and text-to-speech settings.</small></details>
 <details class="voice-cache-section"><summary>Voice cache</summary>
 <small>Build and save reusable speech in Home Assistant. Saving requests only missing clips from your configured provider and may use credits.</small>
 <div class="tools"><button type="button" class="refresh-voice-cache">Refresh voice cache</button></div>
@@ -71,6 +72,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.add-satellite').onclick=()=>this.addSatelliteRow();
     this.root.querySelector('.check-satellite-mappings').onclick=()=>this.checkSatelliteMappings();
     this.root.querySelector('.save-settings').onclick=()=>this.saveSettings();
+    this.root.querySelector('.save-media-search').onclick=()=>this.saveMediaSearchSettings();
+    this.root.querySelector('.search-media').onclick=()=>this.searchMedia();
+    this.root.querySelector('.media-query').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();this.searchMedia();}};
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
     this.root.querySelector('.voice-cache-section').ontoggle=e=>{if(e.target.open)this.loadVoiceCache();};
@@ -434,6 +438,8 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       const text=event.data.stt_output?.text;if(text){session.transcript=text;this.line('You',text);}
     } else if(event.type==='intent-end'){
       const reply=event.data.intent_output;this.conversationId=reply.conversation_id;
+      const mediaReport=reply.response?.speech?.plain?.extra_data?.jarvis_local?.media_search;
+      if(mediaReport)this.renderMediaSearch(mediaReport);
       if(event.data.processed_locally===false && reply.response?.speech?.plain?.extra_data?.jarvis_local?.trackable===true && session.transcript)this.trackCommand(session.transcript);
       this.line('Declan',reply.response?.speech?.plain?.speech || 'No text response.');
       if(this.debugEnabled && event.data.processed_locally===true)this.line('Routing','Home Assistant processed this request locally. It may have matched a sentence trigger before Declan. Check the Assist debug trace.');
@@ -548,6 +554,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     for(const [satellite,player] of Object.entries(this.settings?.satellite_media_players || {}))this.addSatelliteRow(satellite,player);
     this.updateSatelliteRows();
     this.clearSatelliteCheck();
+    this.renderMediaSearchSettings();
     this.root.querySelector('.settings-message').textContent='';this.showSettings(true);
   }
   addProfileRow(key='', profile={}) {
@@ -579,6 +586,75 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const select=this.entitySelect('switch',id,'Choose a switch');select.className='switch-entity';select.setAttribute('aria-label','Switch entity');
     const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.onclick=()=>row.remove();
     row.append(input,select,remove);this.root.querySelector('.switch-fields').append(row);
+  }
+  renderMediaSearchSettings() {
+    const config=this.mediaSearchConfig || {};
+    for(const field of this.root.querySelectorAll('.media-subscriptions input'))field.checked=(config.subscriptions || ['netflix','prime','disney','paramount']).includes(field.value);
+    this.root.querySelector('.tmdb-token').value='';
+    this.root.querySelector('.clear-tmdb-token').checked=false;
+    this.root.querySelector('.tmdb-token-status').textContent=config.catalogue_configured?'A token is saved. Leave the field blank to keep it.':'No token saved. UK subscription catalogues cannot be checked yet.';
+    this.root.querySelector('.media-settings-message').textContent='';
+  }
+  async saveMediaSearchSettings() {
+    if(this.savingSettings || this.savingMediaSearch || !this._hass)return;
+    this.savingMediaSearch=true;
+    const controls=[...this.root.querySelectorAll('.media-search-settings input, .media-search-settings button'),this.root.querySelector('.save-settings')];
+    const disabled=controls.map(field=>field.disabled);controls.forEach(field=>{field.disabled=true;});
+    const token=this.root.querySelector('.tmdb-token');
+    const message=this.root.querySelector('.media-settings-message');
+    const config={region:'GB',subscriptions:[...this.root.querySelectorAll('.media-subscriptions input')].filter(field=>field.checked).map(field=>field.value),clear_token:this.root.querySelector('.clear-tmdb-token').checked};
+    if(token.value.trim())config.tmdb_token=token.value.trim();
+    try {
+      this.mediaSearchConfig=await this._hass.callWS({type:'jarvis_local/save_media_search',config});
+      this.renderMediaSearchSettings();message.textContent='Media search settings saved and active.';
+    } catch(error) {message.textContent='Could not save media search settings: '+(error.message || String(error));}
+    finally {this.savingMediaSearch=false;controls.forEach((field,index)=>{field.disabled=disabled[index];});}
+  }
+  async searchMedia() {
+    if(this.searchingMedia || !this._hass)return;
+    const query=this.root.querySelector('.media-query').value.trim();
+    const status=this.root.querySelector('.media-search-status');
+    if(!query){status.textContent='Enter a film or TV title first.';return;}
+    this.searchingMedia=true;this.root.querySelector('.search-media').disabled=true;
+    this.root.querySelector('.media-search-results').replaceChildren();
+    status.textContent='Searching HA media, Jellyfin and available UK catalogues…';
+    try {const report=await this._hass.callWS({type:'jarvis_local/search_media',query});this.renderMediaSearch(report);}
+    catch(error){status.textContent='Could not complete the search: '+(error.message || String(error));}
+    finally{this.searchingMedia=false;this.root.querySelector('.search-media').disabled=false;}
+  }
+  renderMediaSearch(report) {
+    const container=this.root.querySelector('.media-search-results');container.replaceChildren();
+    this.root.querySelector('.media-search-section').open=true;
+    this.root.querySelector('.media-search-status').textContent=report.response || 'Search finished. Nothing was played.';
+    const card=(heading,lines)=>{
+      const box=document.createElement('div');box.className='diag-card';
+      const title=document.createElement('h3');title.textContent=heading;box.append(title);
+      for(const line of lines){const p=document.createElement('p');p.textContent=line;box.append(p);}
+      container.append(box);return box;
+    };
+    const link=(box,url,label)=>{
+      try {const parsed=new URL(url);if(parsed.protocol!=='https:' || !['www.themoviedb.org','themoviedb.org','www.justwatch.com'].includes(parsed.hostname) || parsed.username)return;}
+      catch(_){return;}
+      const a=document.createElement('a');a.href=url;a.textContent=label;a.target='_blank';a.rel='noopener noreferrer';box.append(a);
+    };
+    for(const source of report.sources || []){
+      const statuses={complete:'Checked',partial:'Incomplete',unavailable:'Unavailable',not_configured:'Not configured'};
+      card(source.name+' · '+(statuses[source.status] || source.status),[
+        ...((source.matches || []).map(item=>item.title+(item.year?' ('+item.year+')':'')+(item.match==='possible'?' — possible title match':''))),
+        ...(!source.matches?.length && source.status==='complete'?['No matching title returned.']:[]),
+        ...(source.message?[source.message]:[]),
+      ]);
+    }
+    const streaming=report.streaming || {};
+    if(streaming.status==='ambiguous')card('Which title?',streaming.candidates || []);
+    for(const item of streaming.matches || []){
+      const box=card(item.title+(item.year?' ('+item.year+')':''),[
+        item.selected_subscriptions?.length?'Selected subscriptions: '+item.selected_subscriptions.join(', '):'No listing on selected subscriptions was returned.',
+        ...(item.other_offers || []),
+        'Listings do not verify your account or include every subscription tier. Availability data: JustWatch via TMDB.',
+      ]);if(item.url)link(box,item.url,'Check provider details');
+    }
+    if(report.recommendation_url){const box=card('Other viewing options',['Check current UK listings before subscribing or buying.']);link(box,report.recommendation_url,'Search legal viewing options');}
   }
   clearSatelliteCheck() {
     // Saving or reopening invalidates the previous snapshot.
@@ -645,7 +721,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     if(!satellite)source.focus();
   }
   async saveSettings() {
-    if(this.savingSettings)return;
+    if(this.savingSettings || this.savingMediaSearch)return;
     const data={switch_lights:{},satellite_media_players:{}};
     for(const select of this.root.querySelectorAll('.settings-fields select'))data[select.dataset.key]=select.value;
     for(const row of this.root.querySelectorAll('.switch-fields > div')) {
@@ -699,7 +775,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
       this.root.querySelector('.debug-content').hidden=!this.debugEnabled;
       this.root.querySelector('.diagnostics').textContent=JSON.stringify(data.diagnostics,null,2);
       this.renderDiagnostics(data.diagnostics || []);
-      this.settings=data.settings || {};this.voiceProfiles=data.voice_profiles || {};
+      this.settings=data.settings || {};this.voiceProfiles=data.voice_profiles || {};this.mediaSearchConfig=data.media_search_config || {};
       this.infoLoaded=true;
     } catch(e) {this.root.querySelector('.diagnostics').textContent=e.message || String(e);}
     finally {this.loadingInfo=false;}
@@ -752,30 +828,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     if(!this._hass?.states[agent] || this._hass.states[agent].state==='unavailable'){this.line('Status','The conversation agent is not loaded. Check the integration startup logs. No command was sent.');return;}
     this.busy=true;this.root.querySelector('.send').disabled=true;input.value='';this.line('You',text);
     const start=performance.now();
-    try {const request={type:'jarvis_local/process',text};const room=this.root.querySelector('.room').value;if(room)request.area_id=room;if(this.conversationId)request.conversation_id=this.conversationId;const reply=await this._hass.callWS(request);if(!preview && reply.response?.speech?.plain?.extra_data?.jarvis_local?.trackable===true)this.trackCommand(original);this.conversationId=reply.conversation_id;this.line('Declan',reply.response?.speech?.plain?.speech || '(No text reply. The routine may announce through the Bedroom Muse.)');}
+    try {const request={type:'jarvis_local/process',text};const room=this.root.querySelector('.room').value;if(room)request.area_id=room;if(this.conversationId)request.conversation_id=this.conversationId;const reply=await this._hass.callWS(request);if(!preview && reply.response?.speech?.plain?.extra_data?.jarvis_local?.trackable===true)this.trackCommand(original);this.conversationId=reply.conversation_id;const mediaReport=reply.response?.speech?.plain?.extra_data?.jarvis_local?.media_search;if(mediaReport)this.renderMediaSearch(mediaReport);this.line('Declan',reply.response?.speech?.plain?.speech || '(No text reply. The routine may announce through the Bedroom Muse.)');}
     catch(e){this.line('Error',e.message || String(e));}
     finally{this.loadInfo();this.busy=false;this.root.querySelector('.send').disabled=false;input.focus();}
   }
 }
 if (!customElements.get('jarvis-local-panel')) customElements.define('jarvis-local-panel',JarvisLocalPanel);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

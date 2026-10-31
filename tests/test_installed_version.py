@@ -51,6 +51,8 @@ class InstalledVersion(unittest.TestCase):
             timers_module.Timers = Timers
             settings_module = types.ModuleType('version_test_pkg.settings')
             settings_module.load = AsyncMock(return_value={})
+            media_config = types.ModuleType('version_test_pkg.media_search_config')
+            media_config.load = AsyncMock(return_value={'region':'GB','subscriptions':[],'tmdb_token':''})
             storage_module = types.ModuleType('homeassistant.helpers.storage')
             class Store:
                 def __init__(self, *args): pass
@@ -59,6 +61,7 @@ class InstalledVersion(unittest.TestCase):
             package = types.ModuleType('version_test_pkg')
             package.__path__ = []
             modules = {'version_test_pkg': package,
+                       'version_test_pkg.media_search_config': media_config,
                        'version_test_pkg.timers': timers_module,
                        'version_test_pkg.settings': settings_module,
                        'homeassistant.helpers.storage': storage_module}
@@ -77,7 +80,8 @@ class InstalledVersion(unittest.TestCase):
                 'panel_custom': types.SimpleNamespace(async_register_panel=registration)})
             info = function(ROOT / 'websocket.py', 'info', {
                 'ar': types.SimpleNamespace(async_get=lambda hass: types.SimpleNamespace(async_list_areas=lambda: [])),
-                'public_profiles': lambda value: {}})
+                'public_profiles': lambda value: {},
+                'public_media_search': lambda hass: {'region':'GB','subscriptions':[],'catalogue_configured':False}})
             replies = []
             connection = types.SimpleNamespace(send_result=lambda request_id, result: replies.append(result))
             with patch.dict(sys.modules, modules), patch.object(version, '__file__', str(folder / 'version.py')):

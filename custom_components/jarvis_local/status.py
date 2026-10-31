@@ -1,8 +1,10 @@
 """Read-only answers from explicit household entities."""
 import re
 from .settings import get
+from .understanding import normalize_request
 
 def answer(hass, text):
+    text, _ = normalize_request(text)
     text = re.sub(r"[?.!,]", "", text.lower()).strip()
     text = re.sub(r"^(?:hey )?jarvis\s+", "", text)
     text = re.sub(r"\s+jarvis$", "", text)
@@ -14,7 +16,22 @@ def answer(hass, text):
         return ("After a lighting command, you can say set them to 30 percent, a bit brighter, or turn them off for two minutes in the same conversation. I can control individual lights by name or alias, set kitchen lights to 30 percent, dim or brighten room lights, answer are the kitchen lights on, and list what lights are in the kitchen. I can discover lights and rooms: say discover lights, list rooms, or list zones. Say turn off the kitchen to control its lights, or replace kitchen with a configured area name. I can run good morning, good night, and start, end or toggle movie time. "
                 "You can also ask: are the lights on, what's the heating set to, "
                 "is the heating on, is the car plugged in, or what's the car battery level. "
-                "You can combine up to four requests, including one household routine. Say preview followed by a command to check it without running anything.")
+                "You can combine up to four requests, including one household routine. Say preview followed by a command to check it without running anything. "
+                "Say find Desperate Housewives, where can I watch a title, or start movie time and play a title to search only. Film and TV search does not start routines or playback.")
+    if text in {"what's the weather", "what is the weather", "what's the weather like",
+                "what is the weather like", "how's the weather", "how is the weather",
+                "tell me the weather", "weather", "weather please"}:
+        weather_id = get(hass, "weather")
+        if not weather_id:
+            return "Choose a weather entity in Declan settings so I can read the current conditions."
+        weather = state(weather_id)
+        if weather is None:
+            return "The weather reading is unavailable."
+        temperature = weather.attributes.get("temperature")
+        unit = weather.attributes.get("temperature_unit", "degrees")
+        condition = str(weather.state).replace("-", " ").replace("_", " ")
+        return "The current weather is " + condition + (
+            ", " + str(temperature) + " " + str(unit) if isinstance(temperature, (int, float)) and not isinstance(temperature, bool) else "") + "."
     if text in {"are the lights on", "which lights are on", "what lights are on"}:
         from homeassistant.components.homeassistant.exposed_entities import async_should_expose
         lights=[s for s in hass.states.async_all('light') if async_should_expose(hass, 'conversation', s.entity_id)]
@@ -38,7 +55,7 @@ def answer(hass, text):
         return ' '.join(parts)
     if text in {"what time is it", "what's the time", "tell me the time", "what is the time", "time please"}:
         from homeassistant.util import dt as dt_util
-        return "It's " + dt_util.now().strftime("%-I:%M %p").lstrip("0") + "."
+        return "It's " + dt_util.now().strftime("%I:%M %p").lstrip("0") + "."
     if text in {"what's the temperature", "what is the temperature", "what's the temperature inside", "what is the temperature inside", "what's the temperature in the house", "what is the temperature in the house", "how warm is it", "how warm is the house", "what's the indoor temperature"}:
         thermostat=get(hass, "thermostat")
         s=state(thermostat) if thermostat else None

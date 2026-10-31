@@ -32,6 +32,7 @@ function fixture(){
  callWS:async request=>{calls.push(request);}};
  panel.loadInfo=async()=>{};
  panel.showSettings=open=>{panel.open=open;};
+ panel.renderMediaSearchSettings=()=>{};
  return {panel,els,calls,controls};
 }
 (async()=>{

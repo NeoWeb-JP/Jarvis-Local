@@ -11,6 +11,9 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers import area_registry as ar
 from .settings import save
 from .satellite_health import check_mappings
+from .media_search_config import public_config as public_media_search, save as save_media_search_config
+from .media_search import parse_search
+from .media_search_adapters import search as run_media_search
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -143,7 +146,45 @@ async def prepare_voice_phrase(hass,connection,msg):
 @callback
 def info(hass,connection,msg):
     data=hass.data.get('jarvis_local',{})
-    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':data.get('version'),'settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
+    connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':data.get('version'),'settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{})),'media_search_config':public_media_search(hass)})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/save_media_search',vol.Required('config'):dict})
+@websocket_api.async_response
+async def save_media_search(hass,connection,msg):
+    try:
+        result=await save_media_search_config(hass,msg['config'])
+    except ValueError as err:
+        connection.send_error(msg['id'],'invalid_settings',str(err));return
+    except (OSError,HomeAssistantError):
+        connection.send_error(msg['id'],'save_failed','Could not save media search settings.');return
+    connection.send_result(msg['id'],result)
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/search_media',vol.Required('query'):str})
+@websocket_api.async_response
+async def search_media(hass,connection,msg):
+    data=hass.data.setdefault('jarvis_local',{})
+    if data.get('media_search_busy'):
+        connection.send_error(msg['id'],'busy','A media search is already running.');return
+    try:
+        query=msg['query'].strip()
+        if not query or len(query)>200:
+            raise ValueError('Enter a film or TV title of up to 200 characters.')
+        request=parse_search('find '+query)
+        if request is None:
+            raise ValueError('Enter a film or TV title.')
+        data['media_search_busy']=True
+        result=await run_media_search(hass,request)
+    except ValueError as err:
+        connection.send_error(msg['id'],'invalid_search',str(err));return
+    except (OSError,HomeAssistantError,TimeoutError):
+        connection.send_error(msg['id'],'search_failed','Could not complete the media search.');return
+    finally:
+        data['media_search_busy']=False
+    connection.send_result(msg['id'],result)
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/check_satellite_mappings'})
@@ -230,26 +271,6 @@ async def check_voice_bridge(hass,connection,msg):
 
 def register(hass):
     for handler in [info,clear,process,check_satellite_mappings,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
+                    save_media_search,search_media,
                     voice_cache,voice_cache_audio,prepare_voice_phrase,import_voice_clips,
                     preview_voice_sentence,save_voice_sentence]:websocket_api.async_register_command(hass,handler)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

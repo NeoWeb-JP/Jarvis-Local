@@ -30,7 +30,7 @@ def additional_room(text, previous_action):
     if not match or previous_action not in {'turn_on','turn_off'}:
         return None
     target=match[1].strip()
-    if not target or target in {'it','them','that','those'}:
+    if not target or re.fullmatch(r'(?:it|them|that|those|these)(?: lights?)?', target):
         return None
     return 'turn '+previous_action.removeprefix('turn_')+' '+target
 

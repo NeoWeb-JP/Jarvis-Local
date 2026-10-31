@@ -8,6 +8,8 @@ from .discovery import lighting
 from .named_switches import named_switch
 from .room_context import apply_room
 from .guests import recognize as guest_recognize, build as guest_build
+from .understanding import normalize_request
+from .media_search import parse_search
 
 LABELS = {
     'jarvis_local_good_morning': 'run the morning routine',
@@ -16,6 +18,10 @@ LABELS = {
 }
 
 def plan(hass, text, area=None):
+    text, _ = normalize_request(text)
+    search_request = parse_search(text)
+    if search_request is not None:
+        return [search_request], search_request['preview']
     raw_text = text.replace('’', "'").strip()
     raw_text = re.sub(r'^(?:hey[\s,]+)?jarvis[\s,:.!?]+', '', raw_text, flags=re.I)
     text = text.lower().replace('’', "'").strip()

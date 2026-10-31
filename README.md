@@ -21,6 +21,12 @@ runs household commands.
 
 A Home Assistant conversation integration with a sidebar chat interface and rule-based household commands. The conversation agent does not require an LLM. Speech recognition, speech output, music and device integrations use the providers configured in Home Assistant and may use cloud services.
 
+## Film and TV search, and improved command understanding
+
+Declan accepts more conversational phrasing, including “Hey Declan, could you please…”, and ordinary current-weather questions. Device names still require an exact exposed target or a known alias; negative instructions are preserved.
+
+Say **“start movie time and play Desperate house wives”** or **“where can I watch Desperate Housewives?”** to search HA media folders, connected Jellyfin, then UK streaming listings. This phase searches only: it does not run movie time or start playback. The sidebar also has **Find films and TV**. Choose Netflix, Prime Video, Disney+ and Paramount+ in **Settings → Film and TV search**; an optional private TMDB read access token enables catalogue availability and rental/purchase alternatives. Listings are supplied by JustWatch via TMDB and do not verify your paid accounts or subscription plans. See [media search setup and speech limits](docs/media-search.md).
+
 ## Current scope
 
 This is an early prototype. Some features require existing helper entities and scripts. The voice and sidebar interface must be verified on your own Home Assistant installation.
@@ -80,7 +86,3 @@ Use **Jarvis settings → Voice profiles** to edit profiles and preview morning 
 Choose an optional weather entity in Jarvis settings. Say “morning briefing” or “evening checks” for the available configured weather, thermostat, car cable and battery readings. These are read-only summaries; unconfigured entities are omitted and unavailable configured readings are reported. They do not include calendar events or light checks. “Good morning” still runs the separate existing routine.
 
 From a supported announcement-capable Assist satellite, say “set a pasta timer for ten minutes”, “how long is left on the pasta timer”, or “cancel the pasta timer”. Each satellite can have up to 20 timers, each with a unique name (and at most one unnamed timer). Ask to add or remove time by name; cancel my timers only affects the current satellite. Existing timers are retained on upgrade. Timers do not start from the sidebar chat.
-
-
-
-

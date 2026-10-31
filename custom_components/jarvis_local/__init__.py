@@ -17,6 +17,8 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass, entry):
     data = hass.data.setdefault(DOMAIN, {})
     data["version"] = await hass.async_add_executor_job(read_version)
+    from .media_search_config import load as load_media_search
+    data["media_search_config"] = await load_media_search(hass)
     from .settings import load
     data["settings"] = await load(hass)
     from homeassistant.helpers.storage import Store
@@ -69,23 +71,3 @@ async def async_unload_entry(hass, entry):
         hass.data[DOMAIN].pop("diagnostics", None)
         return True
     return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

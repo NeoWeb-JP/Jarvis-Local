@@ -16,6 +16,9 @@ errors=sys.modules.setdefault('homeassistant.exceptions',errors)
 spec=importlib.util.spec_from_file_location('satellite_stop',ROOT/'satellite_stop.py')
 stop=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(stop)
+spec_understanding=importlib.util.spec_from_file_location('understanding',ROOT/'understanding.py')
+understanding=importlib.util.module_from_spec(spec_understanding)
+spec_understanding.loader.exec_module(understanding)
 
 def immediate(fn):
     def run(self):
@@ -67,6 +70,7 @@ class Stops(unittest.TestCase):
             intent=types.SimpleNamespace(IntentResponse=Response),
             conversation=types.SimpleNamespace(ConversationResult=lambda **kw:types.SimpleNamespace(**kw)),
             bridge_profile=lambda *args:None,is_spoken_stop=stop.is_spoken_stop,
+            normalize_request=understanding.normalize_request,
             stop_player=stop.stop_player)
         exec(compile(ast.Module(body=[method],type_ignores=[]),'<actual handler>','exec'),ns)
         context=types.SimpleNamespace(user_id='user')

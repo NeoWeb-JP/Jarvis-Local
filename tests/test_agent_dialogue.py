@@ -1,5 +1,6 @@
 """Dialogue integration tests with mocked Home Assistant services."""
 import sys,types,unittest
+from unittest.mock import patch
 import test_commands as fixtures
 conv=types.ModuleType('homeassistant.components.conversation')
 class ConversationEntity:pass
@@ -29,6 +30,8 @@ class UserInput:
 class Dialogue(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.hass=fixtures.Hass();self.hass.data={};self.hass.services=Services();self.agent=module.JarvisAgent(self.hass)
+        verifier=patch.object(sys.modules['jarvis_test.device_control'],'verify',verify)
+        verifier.start();self.addCleanup(verifier.stop)
     async def test_clarification_then_action_and_followup(self):
         first=await self.agent.async_handle(UserInput('lamp on'))
         self.assertTrue(first.continue_conversation);self.assertEqual(self.hass.services.calls,[])
@@ -66,7 +69,10 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.hass.services.calls),2)
         await self.agent.async_handle(UserInput('turn them off'))
         self.assertEqual(self.hass.services.calls[-1][0][1],'turn_off')
-        self.assertEqual(set(self.hass.services.calls[-1][0][2]['entity_id']),{'light.office','light.bedroom'})
+        followup_calls=self.hass.services.calls[2:]
+        self.assertEqual(len(followup_calls),2)
+        self.assertTrue(all(call[0][:2] == ('light','turn_off') for call in followup_calls))
+        self.assertEqual({entity for call in followup_calls for entity in call[0][2]['entity_id']},{'light.office','light.bedroom'})
     async def test_switch_backed_compound_followup(self):
         self.hass.data={'jarvis_local':{'settings':{'switch_lights':{'queen lamp':'switch.queen'}}}}
         self.hass.states.values['switch.queen']=fixtures.State('switch.queen','Queen Lamp')

@@ -7,7 +7,7 @@ from time import monotonic, perf_counter
 import types
 import unittest
 from unittest.mock import AsyncMock
-from test_satellite_stop import stop, immediate, errors
+from test_satellite_stop import stop, immediate, errors, understanding
 
 ROOT = Path(__file__).resolve().parents[1] / 'custom_components' / 'jarvis_local'
 SATELLITE = 'assist_satellite.bedroom'
@@ -30,6 +30,7 @@ def handler():
         bridge_profile=lambda *args: None,
         unwrap=lambda *args: ('Stop', None),
         is_spoken_stop=stop.is_spoken_stop, stop_player=stop.stop_player,
+        normalize_request=understanding.normalize_request,
     )
     exec(compile(ast.Module(body=[method], type_ignores=[]), '<actual stop handler>', 'exec'), namespace)
     return namespace['async_handle']
