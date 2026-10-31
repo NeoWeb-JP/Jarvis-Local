@@ -36,6 +36,25 @@ def answer(hass, text):
             if get(hass,key):parts.append(answer(hass,question))
         if len(parts)==1:parts.append('No briefing entities are configured. Choose them in Jarvis settings.')
         return ' '.join(parts)
+    if text in {"what time is it", "what's the time", "tell me the time", "what is the time", "time please"}:
+        from homeassistant.util import dt as dt_util
+        return "It's " + dt_util.now().strftime("%-I:%M %p").lstrip("0") + "."
+    if text in {"what's the temperature", "what is the temperature", "what's the temperature inside", "what is the temperature inside", "what's the temperature in the house", "what is the temperature in the house", "how warm is it", "how warm is the house", "what's the indoor temperature"}:
+        thermostat=get(hass, "thermostat")
+        s=state(thermostat) if thermostat else None
+        current=s.attributes.get("current_temperature") if s else None
+        if not isinstance(current, (int, float)) or isinstance(current, bool):
+            return "The indoor temperature reading is unavailable."
+        unit=s.attributes.get("temperature_unit") or hass.config.units.temperature_unit
+        return f"It's {current:g} {unit} inside."
+    if text in {"what's the temperature outside", "what is the temperature outside", "how cold is it outside", "how warm is it outside", "what's the outdoor temperature", "outside temperature"}:
+        weather_id=get(hass, "weather")
+        w=state(weather_id) if weather_id else None
+        current=w.attributes.get("temperature") if w else None
+        if not isinstance(current, (int, float)) or isinstance(current, bool):
+            return "The outdoor temperature reading is unavailable."
+        unit=w.attributes.get("temperature_unit") or hass.config.units.temperature_unit
+        return f"It's {current:g} {unit} outside."
     if text in {"what's the heating set to", "what is the heating set to", "is the heating on", "what is the temperature", "what's the temperature"}:
         s=state(get(hass, "thermostat")) if get(hass, "thermostat") else None
         if s is None:return "The thermostat is unavailable."
