@@ -15,7 +15,7 @@ from .personality import confirmation
 from .transcript import correct
 from .verify import verify
 from .device_control import apply_lighting, lighting_report
-from .discovery import lighting
+from .discovery import lighting, display_name
 from homeassistant.components import conversation
 from homeassistant.helpers import intent
 from homeassistant.exceptions import HomeAssistantError
@@ -171,7 +171,7 @@ class JarvisAgent(conversation.ConversationEntity):
                                         failure = 'Device command rejected: ' + ', '.join(failures)
                                     message = lighting_report(self.hass, failures, unknown)
                                     if successes:
-                                        message = 'Changed ' + ', '.join((self.hass.states.get(i).name or i) if self.hass.states.get(i) else i for i in successes) + '. ' + message
+                                        message = 'Changed ' + ', '.join(display_name(self.hass.states.get(i)) if self.hass.states.get(i) else i.split('.', 1)[-1].replace('_', ' ').title() for i in successes) + '. ' + message
                                     replies.append(message)
                                 elif step['kind'] == 'brightness' and not calls:
                                     replies.append('Those lights are off, so I left them off.')
