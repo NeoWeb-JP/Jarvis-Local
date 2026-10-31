@@ -114,6 +114,20 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
         result=await self.agent.async_handle(UserInput('Lights on, scratch that'))
         self.assertEqual(self.hass.services.calls,[])
         self.assertIn('Nothing was run',result.response.speech)
+    async def test_stop_cancels_pending_clarification(self):
+        await self.agent.async_handle(UserInput('lamp on'))
+        reply=await self.agent.async_handle(UserInput('no stop'))
+        self.assertIn('Stopped', reply.response.speech)
+        self.assertEqual(self.hass.services.calls, [])
+        self.assertFalse(self.agent._pending_clarifications)
+
+    async def test_other_lamp_only_with_unique_previous_target(self):
+        from jarvis_test.clarification import resolve
+        pending={'matches':[{'id':'light.kitchen','name':'Kitchen Lamp','room':'Kitchen'},
+                            {'id':'light.bedroom','name':'Bedroom Lamp','room':'Bedroom'}]}
+        self.assertEqual(resolve(pending,'no the other lamp'),('unclear',None))
+        pending['previous_id']='light.kitchen'
+        self.assertEqual(resolve(pending,'no the other lamp'),('resolved','light.bedroom'))
     async def test_other_conversation_cannot_answer(self):
         await self.agent.async_handle(UserInput('lamp on'))
         await self.agent.async_handle(UserInput('bedroom','other'))
