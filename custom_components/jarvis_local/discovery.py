@@ -20,7 +20,7 @@ def text_aliases(value):
 
 def display_name(state):
     name = state.name
-    return name if isinstance(name, str) and name.strip() else state.entity_id
+    return name if isinstance(name, str) and name.strip() else state.entity_id.split('.', 1)[-1].replace('_', ' ').title()
 
 def inventory(hass):
     areas = ar.async_get(hass)
@@ -47,8 +47,8 @@ def _lighting(hass, text, previous=None):
     if text in {'discover lights','list lights','list rooms','list areas','list zones'}:
         if text=='list zones':
             return {'kind':'text','response':'Geographic presence zones: '+(', '.join(display_name(s) for s in hass.states.async_all('zone')) or 'none')+'.', 'label':'list geographic zones'}
-        lines=[r['name']+': '+(', '.join(r['lights']) or 'no exposed lights') for r in rooms.values()]
-        if unassigned:lines.append('No assigned area: '+', '.join(unassigned))
+        lines=[r['name']+': '+(', '.join(display_name(hass.states.get(i)) for i in r['lights']) or 'no exposed lights') for r in rooms.values()]
+        if unassigned:lines.append('No assigned area: '+', '.join(display_name(hass.states.get(i)) for i in unassigned))
         return {'kind':'text','response':'; '.join(lines) or 'No lights discovered.', 'label':'list discovered lights and areas'}
     area_scope=False
     def resolve(target):
@@ -97,7 +97,7 @@ def _lighting(hass, text, previous=None):
                 state=hass.states.get(entity_id)
                 room=next((room['name'] for room in rooms.values() if entity_id in room['lights']), None)
                 option=display_name(state) + (' in '+room if room else '')
-                if option in options: option += ' ('+entity_id+')'
+                if option in options: option += ' (another device with the same name)'
                 options.append(option)
             raise ValueError('Which light did you mean: '+', '.join(options[:5])+'? Please repeat your command with its full name. Nothing was run.')
         elif not matches:
@@ -168,9 +168,9 @@ def _lighting(hass, text, previous=None):
     if action is None:return None
     ids,label=resolve(target)
     bad=[i for i in ids if hass.states.get(i) is None or hass.states.get(i).state not in {'on','off'}]
-    if bad:raise ValueError('Some target lights are unavailable: '+', '.join(bad)+'. Nothing was run.')
+    if bad:raise ValueError('Some target lights are unavailable: '+', '.join(display_name(hass.states.get(i)) if hass.states.get(i) else i.split('.',1)[-1].replace('_',' ').title() for i in bad)+'. Nothing was run.')
     if action.startswith('turn_'):
-        return {'kind':'light','target_label':label,'name':action,'data':{'entity_id':ids},'label':action.replace('_',' ')+' '+label+' ('+', '.join(ids)+')'}
+        return {'kind':'light','target_label':label,'name':action,'data':{'entity_id':ids},'label':action.replace('_',' ')+' '+label}
     if value is not None and not 0<=value<=100:raise ValueError('Brightness must be between zero and 100 percent. Nothing was run.')
     calls=[]
     skipped=[]
@@ -194,7 +194,7 @@ def _lighting(hass, text, previous=None):
         calls.append({'service':'turn_off' if percent==0 else 'turn_on','data':{'entity_id':[i], **({'brightness_pct':percent} if percent else {})}})
     if dimmable_count==0:
         raise ValueError('No dimmable lights were found in '+label+'. Nothing was run.')
-    return {'kind':'brightness','skipped_non_dimmable':skipped,'target_label':label,'calls':calls,'label':action+' '+label+(' to '+str(value)+' percent' if value is not None else ' by 20 percentage points, leaving off lights off')+'; targets: '+', '.join(i for call in calls for i in call['data']['entity_id'])+('; leave unchanged (not dimmable): '+', '.join(skipped) if skipped else '')}
+    return {'kind':'brightness','skipped_non_dimmable':skipped,'target_label':label,'calls':calls,'label':action+' '+label+(' to '+str(value)+' percent' if value is not None else ' by 20 percentage points, leaving off lights off')+'; targets: '+', '.join(display_name(hass.states.get(i)) for call in calls for i in call['data']['entity_id'])+('; leave unchanged (not dimmable): '+', '.join(skipped) if skipped else '')}
 
 def lighting(hass, text, previous=None):
     try:
