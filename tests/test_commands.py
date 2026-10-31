@@ -216,6 +216,12 @@ class Commands(unittest.TestCase):
         steps,preview=plan(self.hass,'preview office off')
         self.assertTrue(preview)
         self.assertNotIn('light.office',steps[0]['label'])
+    def test_natural_language_light_discovery(self):
+        expected=lighting(self.hass,'discover lights')['response']
+        for phrase in ('What lights can you control?', 'Which lights can you control?',
+                       'What lights do you control?', 'What lights are available?',
+                       'Show me the lights.'):
+            self.assertEqual(lighting(self.hass,phrase)['response'],expected)
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()
