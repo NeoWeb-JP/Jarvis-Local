@@ -205,6 +205,17 @@ class Commands(unittest.TestCase):
             self.assertEqual(step['data']['entity_id'],['light.queen'])
         self.assertEqual(correct(self.hass,'Queen Lamp'),('Queen Lamp',[]))
         self.assertEqual(correct(self.hass,'Queen lampoff no actually turn it on'),('Queen lampoff no actually turn it on',[]))
+    def test_discovery_and_preview_use_friendly_names(self):
+        from jarvis_test.planner import plan
+        self.hass.data={}
+        step=lighting(self.hass,'discover lights')
+        self.assertIn('Kitchen Lamp',step['response'])
+        self.assertNotIn('light.kitchen',step['response'])
+        step=lighting(self.hass,'office off')
+        self.assertNotIn('light.office',step['label'])
+        steps,preview=plan(self.hass,'preview office off')
+        self.assertTrue(preview)
+        self.assertNotIn('light.office',steps[0]['label'])
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()
