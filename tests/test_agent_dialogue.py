@@ -101,6 +101,19 @@ class Dialogue(unittest.IsolatedAsyncioTestCase):
     async def test_bad_compound_executes_nothing(self):
         await self.agent.async_handle(UserInput('turn office and missing light on'))
         self.assertEqual(self.hass.services.calls,[])
+    async def test_in_sentence_correction_runs_only_final_command(self):
+        self.hass.states.values['script.jarvis_local_movie']=fixtures.State(
+            'script.jarvis_local_movie','Movie Mode','off')
+        result=await self.agent.async_handle(
+            UserInput('Dinner on, no I mean movie time'))
+        self.assertEqual(len(self.hass.services.calls),1)
+        self.assertEqual(self.hass.services.calls[0][0][:2],('script','jarvis_local_movie'))
+        self.assertIn('Make up your',result.response.speech)
+
+    async def test_incomplete_correction_runs_nothing(self):
+        result=await self.agent.async_handle(UserInput('Lights on, scratch that'))
+        self.assertEqual(self.hass.services.calls,[])
+        self.assertIn('Nothing was run',result.response.speech)
     async def test_other_conversation_cannot_answer(self):
         await self.agent.async_handle(UserInput('lamp on'))
         await self.agent.async_handle(UserInput('bedroom','other'))
