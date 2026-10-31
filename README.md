@@ -27,6 +27,8 @@ This is an early prototype. Some features require existing helper entities and s
 
 Open **Jarvis settings** in the sidebar to select optional household entities. Settings are stored by Home Assistant and kept across HACS updates. Lights and areas are discovered automatically. A single thermostat can be discovered automatically; select one if there are several. Car sensors and custom scripts must be chosen because their roles cannot be inferred reliably from entity names alone. Switches used as lights require an explicit spoken name and must be exposed to Assist. Existing scripts, helpers and automations are not created or replaced by this integration.
 
+Use **Jarvis settings → Satellite audio stops** to pair an Assist satellite with its confirmed media player. Spoken “Stop”, “Be quiet” and “Shut up” stop only that player, silently. Add, change or remove a mapping and save to apply it immediately. Players are never guessed. See [satellite stop setup](docs/satellite-stop.md); hardware barge-in still needs a live device test.
+
 If `/config/jarvis_local_settings.json` exists from version 0.9.2, its values are loaded until settings are saved in the interface. You can remove the old file after confirming your selections have been saved and survive a restart. Do not put household settings in the repository.
 
 ## Installation with HACS

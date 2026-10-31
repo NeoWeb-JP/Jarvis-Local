@@ -26,9 +26,10 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 .sentence-box{padding:14px;border:1px solid var(--divider-color);border-radius:12px;margin:12px 0}.sentence-tokens{display:flex;flex-wrap:wrap;gap:8px;min-height:46px}.sentence-piece{display:inline-flex;align-items:center;flex-wrap:wrap;border:1px solid var(--primary-color);border-radius:10px;padding:4px;gap:3px}.sentence-piece.missing{border-style:dashed}.sentence-piece button{padding:6px 9px;min-height:36px}.sentence-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;font-size:1.1rem}.sentence-gap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sentence-gap input{max-width:180px}.sentence-player{width:100%;margin-top:8px}.phrase-suggestions button{border-style:dashed}.phrase-suggestions button.saved{border-style:solid}.sentence-empty{color:var(--secondary-text-color);align-self:center}audio{max-width:100%}
 .recording-search-controls{align-items:flex-end}.recording-search-controls label{display:flex;flex:1 1 260px;flex-direction:column;gap:6px}.recording-search{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--divider-color);border-radius:10px;background:var(--secondary-background-color);padding:10px}
 .phrase-suggestions{display:block}.phrase-category{margin:12px 0}.phrase-category h4{margin:0 0 8px;font-size:.95rem}.phrase-category .tools{margin:0}
+.satellite-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;padding:14px;margin:12px 0;background:var(--secondary-background-color);border-radius:10px}.satellite-row label{flex:1 1 260px;min-width:0}.satellite-row select{display:block;box-sizing:border-box;width:100%;min-height:44px;margin-top:6px}.satellite-empty[hidden]{display:none}
 .recording-pagination{align-items:center;justify-content:space-between}.recordings-page-status{color:var(--secondary-text-color)}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Declan</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
-<ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
+<ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button></div><h3>Satellite audio stops</h3><small>Choose the media player that belongs to each Assist satellite. “Stop”, “Be quiet” and “Shut up” stop only that player, with no spoken reply. Players are never chosen automatically.</small><div class="satellite-fields"></div><small class="satellite-empty">No satellites mapped. Spoken stop will not stop a media player.</small><div class="tools"><button type="button" class="add-satellite">Add satellite mapping</button></div><small>Changes take effect when you save settings. The satellite must hear the wake word during playback for voice interruption to work.</small><div class="tools"><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Declan</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
 <div class="overview" aria-label="Declan overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small><button type="button" class="check-bridge">Check bridge connection</button><small class="bridge-status" role="status"></small></div><div class="history" role="log" aria-live="polite"></div>
 <form><input aria-label="Message to Declan" placeholder="Ask Declan anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Declan">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Declan reply</button>
@@ -62,6 +63,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.open-settings').onclick=()=>this.openSettings();
     this.root.querySelector('.close-settings').onclick=()=>this.showSettings(false);
     this.root.querySelector('.add-switch').onclick=()=>this.addSwitchRow();
+    this.root.querySelector('.add-satellite').onclick=()=>this.addSatelliteRow();
     this.root.querySelector('.save-settings').onclick=()=>this.saveSettings();
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
@@ -536,6 +538,9 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.profile-message').textContent='';
     this.root.querySelector('.switch-fields').replaceChildren();
     for(const [name,id] of Object.entries(this.settings?.switch_lights || {}))this.addSwitchRow(name,id);
+    this.root.querySelector('.satellite-fields').replaceChildren();
+    for(const [satellite,player] of Object.entries(this.settings?.satellite_media_players || {}))this.addSatelliteRow(satellite,player);
+    this.updateSatelliteRows();
     this.root.querySelector('.settings-message').textContent='';this.showSettings(true);
   }
   addProfileRow(key='', profile={}) {
@@ -568,18 +573,48 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.onclick=()=>row.remove();
     row.append(input,select,remove);this.root.querySelector('.switch-fields').append(row);
   }
+  updateSatelliteRows() {
+    const count=this.root.querySelectorAll('.satellite-row').length;
+    this.root.querySelector('.satellite-empty').hidden=count>0;
+    this.root.querySelector('.add-satellite').disabled=count>=50;
+  }
+  addSatelliteRow(satellite='',player='') {
+    if(this.root.querySelectorAll('.satellite-row').length>=50)return;
+    const row=document.createElement('div');row.className='satellite-row';
+    const make=(label,domain,value,empty,cls)=>{
+      const wrap=document.createElement('label');wrap.textContent=label;
+      const select=this.entitySelect(domain,value,empty);select.className=cls;
+      wrap.append(select);row.append(wrap);return select;
+    };
+    const source=make('Assist satellite','assist_satellite',satellite,'Choose a satellite','satellite-source');
+    make('Media player for silent stop','media_player',player,'Choose a media player','satellite-player');
+    const remove=document.createElement('button');remove.type='button';remove.textContent='Remove mapping';
+    remove.onclick=()=>{row.remove();this.updateSatelliteRows();};
+    row.append(remove);this.root.querySelector('.satellite-fields').append(row);
+    this.updateSatelliteRows();
+    if(!satellite)source.focus();
+  }
   async saveSettings() {
-    const data={switch_lights:{}};
+    const data={switch_lights:{},satellite_media_players:{}};
     for(const select of this.root.querySelectorAll('.settings-fields select'))data[select.dataset.key]=select.value;
     for(const row of this.root.querySelectorAll('.switch-fields > div')) {
       const name=row.querySelector('.switch-name').value.trim().toLowerCase().replace(/\s+/g,' '), entity=row.querySelector('.switch-entity').value;
       if(!name || !entity || Object.hasOwn(data.switch_lights,name)){this.root.querySelector('.settings-message').textContent='Each switch needs a unique spoken name and a selected entity.';return;}
       data.switch_lights[name]=entity;
     }
-    const button=this.root.querySelector('.save-settings');button.disabled=true;
+    for(const row of this.root.querySelectorAll('.satellite-row')) {
+      const satellite=row.querySelector('.satellite-source').value,player=row.querySelector('.satellite-player').value;
+      if(!satellite || !player || Object.hasOwn(data.satellite_media_players,satellite)){
+        this.root.querySelector('.settings-message').textContent='Each mapping needs a unique Assist satellite and a selected media player.';return;
+      }
+      data.satellite_media_players[satellite]=player;
+    }
+    const controls=[...this.root.querySelectorAll('.settings-card input, .settings-card select, .settings-card button')];
+    const disabled=controls.map(control=>control.disabled);
+    controls.forEach(control=>{control.disabled=true;});
     try {await this._hass.callWS({type:'jarvis_local/save_settings',settings:data});this.settings=data;this.root.querySelector('.settings-message').textContent='Settings saved. Changes are active now.';}
     catch(e){this.root.querySelector('.settings-message').textContent='Could not save settings: '+(e.message || String(e));}
-    finally{button.disabled=false;}
+    finally{controls.forEach((control,index)=>{control.disabled=disabled[index];});this.updateSatelliteRows();}
   }
   async previewChecks() {
     if(this.busy || !this._hass)return;

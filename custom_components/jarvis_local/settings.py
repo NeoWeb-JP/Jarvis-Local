@@ -59,6 +59,13 @@ async def save(hass, data):
         if (not isinstance(satellite, str) or not re.fullmatch(r'assist_satellite\.[a-z0-9_]+', satellite)
                 or not isinstance(player, str) or not re.fullmatch(r'media_player\.[a-z0-9_]+', player)):
             raise ValueError('Each satellite needs an explicit media_player entity')
+    previous=hass.data.get('jarvis_local', {}).get('settings', {}).get('satellite_media_players', {})
+    for satellite, player in players.items():
+        # Keep unchanged mappings even when a saved entity is temporarily missing.
+        if isinstance(previous, dict) and previous.get(satellite) == player:
+            continue
+        if hass.states.get(satellite) is None or hass.states.get(player) is None:
+            raise ValueError('Choose an existing Assist satellite and media player for each new mapping')
     cleaned['satellite_media_players']=dict(players)
     await Store(hass, 1, KEY).async_save(cleaned)
     hass.data['jarvis_local']['settings']=cleaned

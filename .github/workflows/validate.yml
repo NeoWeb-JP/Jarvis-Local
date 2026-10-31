@@ -20,6 +20,7 @@ jobs:
       - run: python -m pytest -q tests
       - run: node tests/test_panel_voice.js
       - run: node tests/test_panel_favourites.js
+      - run: node tests/test_panel_satellite_settings.js
       - run: node tests/test_panel_phrase_cache.js
   hassfest:
     runs-on: ubuntu-latest
