@@ -25,6 +25,7 @@ class State:
     def __init__(self, value):
         self.state = value
         self.attributes = {}
+        self.name = "Bedroom Lamp"
 
 class States:
     def __init__(self):
@@ -59,7 +60,8 @@ class TestDeviceControl(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(bad, ["light.bad"])
         self.assertEqual(unknown, [])
         self.assertEqual(hass.services.calls, ["light.bad", "light.bad", "light.good"])
-        self.assertIn("light.bad", control.lighting_report(bad, unknown))
+        self.assertIn("Bedroom Lamp", control.lighting_report(hass, bad, unknown))
+        self.assertNotIn("light.bad", control.lighting_report(hass, bad, unknown))
     async def test_no_retry_when_state_changed_despite_error(self):
         hass = Hass()
         async def rejected_but_applied(domain, service, data, **kwargs):
