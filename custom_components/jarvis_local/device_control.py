@@ -43,15 +43,24 @@ async def apply_lighting(hass, domain, service, data, context):
     return succeeded, failed, unverified
 
 
-def lighting_report(failed, unverified):
+def _friendly_names(hass, entity_ids):
+    names = []
+    for entity_id in entity_ids:
+        state = hass.states.get(entity_id)
+        name = getattr(state, 'name', None) if state is not None else None
+        names.append(name.strip() if isinstance(name, str) and name.strip() else entity_id)
+    return names
+
+
+def lighting_report(hass, failed, unverified):
     parts = []
     if failed:
         parts.append(
-            "I couldn't control " + ", ".join(failed)
+            "I couldn't control " + ", ".join(_friendly_names(hass, failed))
             + ". The device or cloud rejected the request."
         )
     if unverified:
         parts.append(
-            "Home Assistant hasn't confirmed " + ", ".join(unverified) + "."
+            "Home Assistant hasn't confirmed " + ", ".join(_friendly_names(hass, unverified)) + "."
         )
     return " ".join(parts)
