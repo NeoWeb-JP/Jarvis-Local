@@ -14,6 +14,7 @@ from .clarification import request as clarification_request, resolve as clarific
 from .personality import confirmation
 from .transcript import correct
 from .verify import verify
+from .device_control import apply_lighting, lighting_report
 from .discovery import lighting
 from homeassistant.components import conversation
 from homeassistant.helpers import intent
@@ -147,36 +148,42 @@ class JarvisAgent(conversation.ConversationEntity):
                             if step['kind'] == 'text':
                                 replies.append(step['response'])
                                 continue
-                            if step['kind'] == 'brightness':
-                                unverified=[]
-                                for call in step['calls']:
-                                    await self.hass.services.async_call('light',call['service'],call['data'],blocking=True,context=user_input.context)
-                                    unverified.extend(await verify(self.hass,'light',call['service'],call['data']))
-                                step['unverified']=unverified
-                                if unverified:
-                                    replies.append('I sent the brightness request, but Home Assistant has not confirmed: '+', '.join(unverified)+'.')
-                                    continue
-                                replies.append(await confirmation(self.hass,user_input.context,'Adjusting '+step.get('target_label','the lights')+'.',action='brightness') if step['calls'] else 'Those lights are off, so I left them off.')
-                                continue
-                            if step['kind'] == 'switch_light':
-                                await self.hass.services.async_call('switch',step['name'],step['data'],blocking=True,context=user_input.context)
-                                unverified=await verify(self.hass,'switch',step['name'],step['data'])
-                                step['unverified']=unverified
-                                if unverified:
-                                    replies.append('I sent the request, but Home Assistant has not confirmed the change.')
-                                    continue
-                                if grouped_lighting:lighting_succeeded=True
-                                else:replies.append(await confirmation(self.hass,user_input.context,'Turning '+('off' if step['name']=='turn_off' else 'on')+' '+step.get('target_label', 'the light')+'.',action='off' if step['name']=='turn_off' else 'on'))
-                                continue
-                            if step['kind'] == 'light':
-                                await self.hass.services.async_call('light', step['name'], step['data'], blocking=True, context=user_input.context)
-                                unverified=await verify(self.hass,'light',step['name'],step['data'])
-                                step['unverified']=unverified
-                                if unverified:
-                                    replies.append('I sent the command, but Home Assistant has not confirmed: '+', '.join(unverified)+'.')
-                                    continue
-                                if grouped_lighting:lighting_succeeded=True
-                                else:replies.append(await confirmation(self.hass,user_input.context,'Turning '+('off' if step['name']=='turn_off' else 'on')+' '+step.get('target_label','the lights')+'.',action='off' if step['name']=='turn_off' else 'on'))
+                            if step['kind'] in {'brightness', 'switch_light', 'light'}:
+                                calls = step['calls'] if step['kind'] == 'brightness' else [
+                                    {'service': step['name'], 'data': step['data']}
+                                ]
+                                domain = 'switch' if step['kind'] == 'switch_light' else 'light'
+                                successes, failures, unknown = [], [], []
+                                for call in calls:
+                                    ok, failed_ids, unchecked = await apply_lighting(
+                                        self.hass, domain, call['service'],
+                                        call['data'], user_input.context
+                                    )
+                                    successes.extend(ok)
+                                    failures.extend(failed_ids)
+                                    unknown.extend(unchecked)
+                                step['succeeded'] = successes
+                                step['failed'] = failures
+                                step['unverified'] = unknown
+                                if failures or unknown:
+                                    outcome = 'partial' if successes else 'failed'
+                                    if failures:
+                                        failure = 'Device command rejected: ' + ', '.join(failures)
+                                    message = lighting_report(failures, unknown)
+                                    if successes:
+                                        message = 'Changed ' + ', '.join(successes) + '. ' + message
+                                    replies.append(message)
+                                elif step['kind'] == 'brightness' and not calls:
+                                    replies.append('Those lights are off, so I left them off.')
+                                elif grouped_lighting:
+                                    lighting_succeeded = True
+                                else:
+                                    action = ('brightness' if step['kind'] == 'brightness'
+                                              else 'off' if step['name'] == 'turn_off' else 'on')
+                                    fallback = ('Adjusted ' if action == 'brightness'
+                                                else 'Turned ' + action + ' ') + step.get('target_label', 'the lights') + '.'
+                                    replies.append(await confirmation(
+                                        self.hass, user_input.context, fallback, action=action))
                                 continue
                             if step['kind'] == 'guest':
                                 data=step['data']; operation=data['operation']
@@ -223,17 +230,17 @@ class JarvisAgent(conversation.ConversationEntity):
                     action='off' if steps[0]['name']=='turn_off' else 'on'
                     replies.insert(0,await confirmation(self.hass,user_input.context,'Turning '+action+' the lights.',action=action))
                 speech = ' '.join(r for r in replies if r)
-                if outcome=='completed':
+                if outcome in {'completed', 'partial'}:
                     light_ids=[]
                     invalidated=False
                     for step in steps:
-                        if step['kind'] in {'light','switch_light'} and not step.get('unverified'):
-                            light_ids.extend(step['data']['entity_id'])
-                        elif step['kind']=='brightness' and step['calls'] and not step.get('unverified'):
-                            light_ids.extend(i for call in step['calls'] for i in call['data']['entity_id'])
-                        elif step['kind'] in {'action','guest'} or step.get('unverified'):
+                        if step['kind'] in {'light','switch_light'}:
+                            light_ids.extend(step.get('succeeded', []))
+                        elif step['kind']=='brightness':
+                            light_ids.extend(step.get('succeeded', []))
+                        elif step['kind'] in {'action','guest'} or step.get('unverified') or step.get('failed'):
                             invalidated=True
-                    if invalidated:
+                    if invalidated and not light_ids:
                         self._recent_lights.pop(memory_key,None)
                     elif light_ids:
                         self._recent_lights[memory_key]={'at':monotonic(),'ids':list(dict.fromkeys(light_ids))}
