@@ -48,7 +48,7 @@ def _friendly_names(hass, entity_ids):
     for entity_id in entity_ids:
         state = hass.states.get(entity_id)
         name = getattr(state, 'name', None) if state is not None else None
-        names.append(name.strip() if isinstance(name, str) and name.strip() else entity_id)
+        names.append(name.strip() if isinstance(name, str) and name.strip() else entity_id.split('.', 1)[-1].replace('_', ' ').title())
     return names
 
 
