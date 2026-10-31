@@ -169,9 +169,9 @@ class JarvisAgent(conversation.ConversationEntity):
                                     outcome = 'partial' if successes else 'failed'
                                     if failures:
                                         failure = 'Device command rejected: ' + ', '.join(failures)
-                                    message = lighting_report(failures, unknown)
+                                    message = lighting_report(self.hass, failures, unknown)
                                     if successes:
-                                        message = 'Changed ' + ', '.join(successes) + '. ' + message
+                                        message = 'Changed ' + ', '.join((self.hass.states.get(i).name or i) if self.hass.states.get(i) else i for i in successes) + '. ' + message
                                     replies.append(message)
                                 elif step['kind'] == 'brightness' and not calls:
                                     replies.append('Those lights are off, so I left them off.')
