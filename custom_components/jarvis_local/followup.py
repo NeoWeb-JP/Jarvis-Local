@@ -26,7 +26,7 @@ def additional_room(text, previous_action):
     """Handle 'and the dining room lights' only after an established on/off action."""
     text=text.lower().replace('’', "'").strip().rstrip('.?!')
     text=re.sub(r'^(?:hey[\\s,]+)?jarvis[\\s,:.!?]+', '', text)
-    match=re.fullmatch(r'and (?:the )?(.+?)(?: lights?)?',text)
+    match=re.fullmatch(r'and (?:the )?(.+)',text)
     if not match or previous_action not in {'turn_on','turn_off'}:
         return None
     target=match[1].strip()
