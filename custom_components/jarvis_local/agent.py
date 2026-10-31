@@ -79,12 +79,18 @@ class JarvisAgent(conversation.ConversationEntity):
             if self_corrected:
                 corrections.append('superseded earlier command')
             if getattr(user_input,'device_id',None) or getattr(user_input,'satellite_id',None):
-                command_text,corrections=correct(self.hass,command_text,area)
-            timer_request=parse_timer(command_text)
+                command_text,stt_corrections=correct(self.hass,command_text,area)
+                corrections.extend(stt_corrections)
+            stop_requested=bool(re.fullmatch(r'(?:jarvis[ ,]+)?(?:no[ ,]+)?(?:stop|stop that|cancel|cancel that|never mind|nevermind|leave it)[.!? ]*',command_text.strip(),re.I))
+            timer_request=None if stop_requested else parse_timer(command_text)
             pending=self._pending_clarifications.get(memory_key)
             resolution,entity_id=clarification_resolve(pending,command_text) if pending else (None,None)
             social = social_reply(command_text, voice_profile, self.hass.data.setdefault('jarvis_local',{}).setdefault('social_history',{})) if not pending else None
-            if social is not None:
+            if stop_requested:
+                self._pending_clarifications.pop(memory_key,None)
+                self._recent_lights.pop(memory_key,None)
+                steps=[{'kind':'text','response':'Stopped. No new action was started.','label':'stop pending conversation'}]
+            elif social is not None:
                 steps=[{'kind':'text','response':social,'label':'answer greeting'}]
             elif timer_request is not None:
                 self._pending_clarifications.pop(memory_key,None)
@@ -108,6 +114,9 @@ class JarvisAgent(conversation.ConversationEntity):
                 ambiguous=clarification_request(self.hass,command_text,area)
                 if ambiguous:
                     ambiguous['at']=now
+                    previous=self._recent_lights.get(memory_key)
+                    if previous and len(previous['ids']) == 1:
+                        ambiguous['previous_id']=previous['ids'][0]
                     self._pending_clarifications[memory_key]=ambiguous
                     while len(self._pending_clarifications)>64:del self._pending_clarifications[next(iter(self._pending_clarifications))]
                     steps=[{'kind':'text','response':ambiguous['question'],'label':'clarify light'}]
