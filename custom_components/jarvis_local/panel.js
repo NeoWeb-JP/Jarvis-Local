@@ -34,7 +34,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
 .satellite-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;padding:14px;margin:12px 0;background:var(--secondary-background-color);border-radius:10px}.satellite-row label{flex:1 1 260px;min-width:0}.satellite-row select{display:block;box-sizing:border-box;width:100%;min-height:44px;margin-top:6px}.satellite-empty[hidden]{display:none}
 .recording-pagination{align-items:center;justify-content:space-between}.recordings-page-status{color:var(--secondary-text-color)}
 </style><header class="toolbar"><button type="button" class="menu" aria-label="Open Home Assistant menu">☰</button><img src="/jarvis_local/logo.png" alt="" width="36" height="36" style="border-radius:9px"><span class="toolbar-title">Declan</span><button type="button" class="fallback open-settings">Settings</button><a href="/config">HA settings</a></header>
-<ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button></div><h3>Satellite audio stops</h3><small>Choose the media player that belongs to each Assist satellite. “Stop”, “Be quiet” and “Shut up” stop only that player, with no spoken reply. Players are never chosen automatically.</small><div class="satellite-fields"></div><small class="satellite-empty">No satellites mapped. Spoken stop will not stop a media player.</small><div class="tools"><button type="button" class="add-satellite">Add satellite mapping</button></div><small>Changes take effect when you save settings. The satellite must hear the wake word during playback for voice interruption to work.</small><div class="tools"><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
+<ha-card class="settings-card" hidden><h2>Declan settings</h2><small>Lights and areas are discovered automatically. Choose optional household entities below.</small><div class="settings-fields"></div><h3>Voice profiles</h3><small>Use the enrolled name from VoicePipeline as the speaker key. Scores below the threshold get a neutral greeting. One morning response per line; {name} inserts the display name. Voice matching does not grant access.</small><div class="profile-fields"></div><div class="tools"><button type="button" class="add-profile">Add voice profile</button><button type="button" class="save-profiles">Save voice profiles</button></div><small class="profile-message" role="status"></small><h3>Switches used as lights</h3><small>Switches must be exposed to Assist.</small><div class="switch-fields"></div><div class="tools"><button type="button" class="add-switch">Add switch</button></div><h3>Satellite audio stops</h3><small>Choose the media player that belongs to each Assist satellite. “Stop”, “Be quiet” and “Shut up” stop only that player, with no spoken reply. Players are never chosen automatically.</small><div class="satellite-fields"></div><small class="satellite-empty">No satellites mapped. Spoken stop will not stop a media player.</small><div class="tools"><button type="button" class="add-satellite">Add satellite mapping</button><button type="button" class="check-satellite-mappings">Check saved mappings</button></div><small class="satellite-check-message" role="status"></small><div class="satellite-check-results"></div><small>Changes take effect when you save settings. The satellite must hear the wake word during playback for voice interruption to work.</small><div class="tools"><button type="button" class="save-settings">Save settings</button><button type="button" class="close-settings">Back to chat</button></div><small class="settings-message" role="status"></small></ha-card>
 <ha-card class="chat-card"><div class="chat-head"><div><h2>Chat with Declan</h2><small class="connection">Connecting to Home Assistant…</small></div><button type="button" class="clear">Clear chat</button></div>
 <div class="overview" aria-label="Declan overview"><small class="overview-agent">Agent: checking…</small><small class="overview-pipeline">Voice assistant: not selected</small><small class="overview-stt">Speech-to-text: not selected</small><button type="button" class="check-bridge">Check bridge connection</button><small class="bridge-status" role="status"></small></div><div class="history" role="log" aria-live="polite"></div>
 <form><input aria-label="Message to Declan" placeholder="Ask Declan anything" required><button class="speak" type="button" aria-label="Start voice input" title="Speak to Declan">🎙</button><button class="send">Send</button><button class="preview" type="button">Preview</button></form><small class="voice-status" role="status"></small><button type="button" class="replay-voice" hidden>Play Declan reply</button>
@@ -69,6 +69,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.close-settings').onclick=()=>this.showSettings(false);
     this.root.querySelector('.add-switch').onclick=()=>this.addSwitchRow();
     this.root.querySelector('.add-satellite').onclick=()=>this.addSatelliteRow();
+    this.root.querySelector('.check-satellite-mappings').onclick=()=>this.checkSatelliteMappings();
     this.root.querySelector('.save-settings').onclick=()=>this.saveSettings();
     this.root.querySelector('.add-profile').onclick=()=>this.addProfileRow();
     this.root.querySelector('.save-profiles').onclick=()=>this.saveProfiles();
@@ -546,6 +547,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     this.root.querySelector('.satellite-fields').replaceChildren();
     for(const [satellite,player] of Object.entries(this.settings?.satellite_media_players || {}))this.addSatelliteRow(satellite,player);
     this.updateSatelliteRows();
+    this.clearSatelliteCheck();
     this.root.querySelector('.settings-message').textContent='';this.showSettings(true);
   }
   addProfileRow(key='', profile={}) {
@@ -578,6 +580,49 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.onclick=()=>row.remove();
     row.append(input,select,remove);this.root.querySelector('.switch-fields').append(row);
   }
+  clearSatelliteCheck() {
+    // Saving or reopening invalidates the previous snapshot.
+    this.satelliteCheckRevision=(this.satelliteCheckRevision || 0)+1;
+    this.root.querySelector('.satellite-check-message').textContent='';
+    this.root.querySelector('.satellite-check-results').replaceChildren();
+  }
+  async checkSatelliteMappings() {
+    if(this.checkingSatelliteMappings || this.savingSettings || !this._hass)return;
+    this.checkingSatelliteMappings=true;
+    const revision=this.satelliteCheckRevision || 0;
+    const button=this.root.querySelector('.check-satellite-mappings');
+    const message=this.root.querySelector('.satellite-check-message');
+    const container=this.root.querySelector('.satellite-check-results');
+    button.disabled=true;container.replaceChildren();message.textContent='Checking saved mappings…';
+    try {
+      const result=await this._hass.callWS({type:'jarvis_local/check_satellite_mappings'});
+      if(revision!==(this.satelliteCheckRevision || 0))return;
+      if(result.error){message.textContent=result.error;return;}
+      const rows=result.mappings || [];
+      message.textContent=rows.length
+        ? 'Saved mappings checked. Unsaved edits are not included. No audio was played or stopped.'
+        : 'No saved mappings. Choose a satellite and player, then save settings.';
+      const statuses={available:'Available',missing:'Entity missing',unavailable:'Unavailable',unknown:'State unknown',invalid:'Invalid entity ID'};
+      for(const item of rows){
+        const card=document.createElement('div');card.className='diag-card';
+        const fields=[
+          ['Assist satellite',item.satellite_id || 'Invalid satellite'],
+          ['Satellite status',statuses[item.satellite_status] || 'Not checked'],
+          ['Media player',item.media_player_id || 'Invalid player'],
+          ['Player status',statuses[item.player_status] || 'Not checked'],
+          ['Check',item.entities_available?'Both entities are available.':'Review this mapping or device connection.'],
+        ];
+        if(item.shared_player)fields.push(['Shared player','More than one satellite maps to this player. Confirm this is intentional.']);
+        for(const [label,value] of fields){const line=document.createElement('p');line.textContent=label+': '+value;card.append(line);}
+        const note=document.createElement('small');note.textContent='Playback stopping and hardware interruption remain unverified.';card.append(note);
+        container.append(card);
+      }
+    } catch(error) {
+      if(revision===(this.satelliteCheckRevision || 0))message.textContent='Could not check saved mappings: '+(error.message || String(error));
+    } finally {
+      this.checkingSatelliteMappings=false;button.disabled=!!this.savingSettings;
+    }
+  }
   updateSatelliteRows() {
     const count=this.root.querySelectorAll('.satellite-row').length;
     this.root.querySelector('.satellite-empty').hidden=count>0;
@@ -600,6 +645,7 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     if(!satellite)source.focus();
   }
   async saveSettings() {
+    if(this.savingSettings)return;
     const data={switch_lights:{},satellite_media_players:{}};
     for(const select of this.root.querySelectorAll('.settings-fields select'))data[select.dataset.key]=select.value;
     for(const row of this.root.querySelectorAll('.switch-fields > div')) {
@@ -616,10 +662,11 @@ ha-card{display:block;box-sizing:border-box;max-width:960px;margin:20px auto;pad
     }
     const controls=[...this.root.querySelectorAll('.settings-card input, .settings-card select, .settings-card button')];
     const disabled=controls.map(control=>control.disabled);
+    this.savingSettings=true;
     controls.forEach(control=>{control.disabled=true;});
-    try {await this._hass.callWS({type:'jarvis_local/save_settings',settings:data});this.settings=data;this.root.querySelector('.settings-message').textContent='Settings saved. Changes are active now.';}
+    try {await this._hass.callWS({type:'jarvis_local/save_settings',settings:data});this.settings=data;this.clearSatelliteCheck();this.root.querySelector('.settings-message').textContent='Settings saved. Changes are active now.';}
     catch(e){this.root.querySelector('.settings-message').textContent='Could not save settings: '+(e.message || String(e));}
-    finally{controls.forEach((control,index)=>{control.disabled=disabled[index];});this.updateSatelliteRows();}
+    finally{this.savingSettings=false;controls.forEach((control,index)=>{control.disabled=disabled[index];});this.root.querySelector('.check-satellite-mappings').disabled=!!this.checkingSatelliteMappings;this.updateSatelliteRows();}
   }
   async previewChecks() {
     if(this.busy || !this._hass)return;

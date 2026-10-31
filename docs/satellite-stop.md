@@ -66,3 +66,15 @@ playback. Requests intercepted before reaching Jarvis cannot appear here.
 Like other diagnostics, stop records are disabled by default, kept only in
 memory, limited to the latest 20 requests and cleared when troubleshooting is
 disabled. They contain the decoded stop text, never the voice bridge envelope.
+
+## Check saved mappings
+
+Choose **Check saved mappings** in **Satellite audio stops** to check whether
+each saved satellite and player exists and reports an available state. Missing,
+unavailable, unknown or invalid entities are identified. A shared-player warning
+appears when more than one satellite explicitly targets the same player.
+
+This check uses saved settings, so save edits first. It does not change mappings,
+play or stop audio, call device services or test microphone interruption.
+An available entity does not prove that stopping playback will work.
+Results are a snapshot; check again after device or connection changes.

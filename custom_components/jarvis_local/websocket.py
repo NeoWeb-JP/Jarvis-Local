@@ -10,6 +10,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers import area_registry as ar
 from .settings import save
+from .satellite_health import check_mappings
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -145,6 +146,12 @@ def info(hass,connection,msg):
     connection.send_result(msg['id'],{'areas':[{'id':a.id,'name':a.name} for a in ar.async_get(hass).async_list_areas()], 'diagnostics':data.get('diagnostics',[]) if data.get('debug_enabled',False) else [],'debug_enabled':data.get('debug_enabled',False),'version':data.get('version'),'settings':data.get('settings',{}),'voice_profiles':public_profiles(data.get('voice_id_config',{}))})
 
 @websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required('type'):'jarvis_local/check_satellite_mappings'})
+@callback
+def check_satellite_mappings(hass,connection,msg):
+    connection.send_result(msg['id'],check_mappings(hass))
+
+@websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required('type'):'jarvis_local/clear_diagnostics'})
 @callback
 def clear(hass,connection,msg):
@@ -222,7 +229,7 @@ async def check_voice_bridge(hass,connection,msg):
     connection.send_result(msg['id'],{'bridges':results})
 
 def register(hass):
-    for handler in [info,clear,process,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
+    for handler in [info,clear,process,check_satellite_mappings,save_settings,save_voice_profiles,set_debug,check_voice_bridge,
                     voice_cache,voice_cache_audio,prepare_voice_phrase,import_voice_clips,
                     preview_voice_sentence,save_voice_sentence]:websocket_api.async_register_command(hass,handler)
 
