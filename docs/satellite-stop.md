@@ -1,0 +1,42 @@
+# Silent satellite stop
+
+“Stop”, “Stop that”, “Be quiet” and “Shut up” (optionally prefixed with
+“Jarvis”) stop only the player explicitly configured for the originating
+Assist satellite. No acknowledgement is spoken, including when the service
+fails. Missing satellite IDs and unmapped satellites run no media action.
+Device IDs and room names are never used to guess a player.
+
+The user's successful manual media_stop test confirmed:
+`assist_satellite.bedroom_voice_assistant_assist_satellite` →
+`media_player.bedroom_voice_assistant`.
+Hardware barge-in remains unverified: this code can act only after the
+satellite delivers the recognized request to Jarvis.
+
+## Configuration
+
+The persisted Jarvis settings object supports an optional
+`satellite_media_players` dictionary. Example:
+
+```json
+{
+  "satellite_media_players": {
+    "assist_satellite.bedroom_voice_assistant_assist_satellite": "media_player.bedroom_voice_assistant"
+  }
+}
+```
+
+For an installation without saved Jarvis settings, merge this field into
+`/config/jarvis_local_settings.json` and restart Home Assistant.
+That legacy file is loaded only when there are no persisted settings.
+For existing installations, include this field in the existing administrator
+settings save request. The current sidebar does not expose a mapping editor;
+ordinary sidebar saves preserve existing mappings. An empty dictionary clears
+the mappings. No household mapping is enabled by default.
+
+Add kitchen and other satellites only after confirming their exact satellite
+and player entity IDs. Each value must be one media_player entity ID.
+
+Stop also clears the originating conversation's pending clarification and
+lighting follow-up. It bypasses Jarvis's action lock, without cancelling its
+running task or unrelated Home Assistant scripts, timers or automations.
+Other cancellation phrases retain their existing dialogue behavior.

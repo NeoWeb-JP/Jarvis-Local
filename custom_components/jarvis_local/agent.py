@@ -4,6 +4,7 @@ import logging
 import re
 from time import perf_counter, monotonic
 from uuid import uuid4
+from .satellite_stop import is_spoken_stop, stop_player
 from .settings import get
 from .speaker_identity import unwrap, bridge_profile
 from .morning import morning_reply
@@ -73,6 +74,15 @@ class JarvisAgent(conversation.ConversationEntity):
             command_text,voice_profile=unwrap(command_text,cfg.get('secret'),cfg.get('profiles',{}),self._voice_markers)
             if not command_text:command_text=''
         original_text=str(command_text)
+        # Bypass the action lock so running routines cannot delay a stop.
+        if is_spoken_stop(command_text):
+            self._pending_clarifications.pop(memory_key, None)
+            self._recent_lights.pop(memory_key, None)
+            await stop_player(self.hass, user_input)
+            result.async_set_speech('', extra_data={'jarvis_local': {'trackable': False}})
+            return conversation.ConversationResult(
+                response=result, conversation_id=conversation_id,
+                continue_conversation=False)
         try:
             area=area_override or source_area(self.hass,user_input)
             command_text, self_corrected = final_request(command_text)

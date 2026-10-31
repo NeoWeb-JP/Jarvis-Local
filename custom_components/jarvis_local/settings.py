@@ -27,7 +27,7 @@ async def load(hass):
     return data
 
 async def save(hass, data):
-    if not isinstance(data, dict) or set(data)-set(FIELDS)-{'switch_lights'}:
+    if not isinstance(data, dict) or set(data)-set(FIELDS)-{'switch_lights', 'satellite_media_players'}:
         raise ValueError('Invalid settings fields')
     cleaned={}
     for key, domain in FIELDS.items():
@@ -49,6 +49,17 @@ async def save(hass, data):
         if name in switches:raise ValueError('Switch names must be unique')
         switches[name]=entity
     cleaned['switch_lights']=switches
+    # Older sidebar clients omit this field; preserve their existing mappings.
+    players=data.get('satellite_media_players',
+        hass.data.get('jarvis_local', {}).get('settings', {}).get('satellite_media_players', {}))
+    if not isinstance(players, dict) or len(players)>50:
+        raise ValueError('Invalid satellite media player mappings')
+    import re
+    for satellite, player in players.items():
+        if (not isinstance(satellite, str) or not re.fullmatch(r'assist_satellite\.[a-z0-9_]+', satellite)
+                or not isinstance(player, str) or not re.fullmatch(r'media_player\.[a-z0-9_]+', player)):
+            raise ValueError('Each satellite needs an explicit media_player entity')
+    cleaned['satellite_media_players']=dict(players)
     await Store(hass, 1, KEY).async_save(cleaned)
     hass.data['jarvis_local']['settings']=cleaned
 
