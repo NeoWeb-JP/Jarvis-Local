@@ -170,6 +170,41 @@ class Commands(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'does not report'):media_plan(self.hass,'pause music in kitchen')
         self.hass.states.values['media_player.kitchen'].state='off'
         with self.assertRaisesRegex(ValueError,'unavailable or off'):media_plan(self.hass,'resume music in kitchen')
+    def test_time_and_temperature_are_local_and_measured(self):
+        from jarvis_test.status import answer
+        from unittest.mock import patch
+        from datetime import datetime
+        self.hass.data={'jarvis_local':{'settings':{'thermostat':'climate.home','weather':'weather.home'}}}
+        self.hass.config=types.SimpleNamespace(units=types.SimpleNamespace(temperature_unit='°C'))
+        indoor=State('climate.home','Heating','heat')
+        indoor.attributes={'temperature':23,'current_temperature':19.5,'temperature_unit':'°C'}
+        outdoor=State('weather.home','Weather','cloudy')
+        outdoor.attributes={'temperature':8,'temperature_unit':'°C'}
+        self.hass.states.values[indoor.entity_id]=indoor
+        self.hass.states.values[outdoor.entity_id]=outdoor
+        util=types.ModuleType('homeassistant.util')
+        util.__path__=[]
+        dt=types.ModuleType('homeassistant.util.dt')
+        dt.now=lambda:datetime(2026,10,30,7,35)
+        with patch.dict(sys.modules,{'homeassistant.util':util,'homeassistant.util.dt':dt}):
+            self.assertEqual(answer(self.hass,"what's the time"),"It's 7:35 AM.")
+        self.assertEqual(answer(self.hass,"what's the temperature"),"It's 19.5 °C inside.")
+        self.assertEqual(answer(self.hass,"what's the temperature outside"),"It's 8 °C outside.")
+        indoor.attributes.pop('current_temperature')
+        self.assertIn('unavailable',answer(self.hass,'how warm is the house'))
+        outdoor.state='unavailable'
+        self.assertIn('unavailable',answer(self.hass,'outside temperature'))
+    def test_queen_lamp_joined_voice_input_uses_unique_entity(self):
+        from jarvis_test.transcript import correct
+        self.hass.states.values['light.queen']=State('light.queen','Queen Lamp')
+        self.hass.entities.entries['light.queen']=types.SimpleNamespace(area_id='bedroom',device_id=None,disabled_by=None,hidden_by=None,aliases=set())
+        for spoken in ('Queen Lampoff.', 'Queen, Lamp, Off.'):
+            normalized, changes=correct(self.hass,spoken)
+            self.assertEqual(normalized,'queen lamp off')
+            step=lighting(self.hass,normalized)
+            self.assertEqual(step['data']['entity_id'],['light.queen'])
+        self.assertEqual(correct(self.hass,'Queen Lamp'),('Queen Lamp',[]))
+        self.assertEqual(correct(self.hass,'Queen lampoff no actually turn it on'),('Queen lampoff no actually turn it on',[]))
     def test_unrecognised_target_does_not_run(self):
         self.assertIsNone(lighting(self.hass,'unknown room on'))
 if __name__=='__main__':unittest.main()
