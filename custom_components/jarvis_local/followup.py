@@ -6,6 +6,7 @@ def followup(text):
     text=percentages(text).lower().replace('’',"'").strip().rstrip('.?!')
     text=re.sub(r'^(?:hey[\s,]+)?jarvis[\s,:.!?]+','',text)
     preview=False
+    text=re.sub(r'^(?:(?:no[ ,]+)?actually[ ,]+|no[ ,]+i meant[ ,]+)', '', text)
     for prefix in ['preview ','dry run ','what would you do if i said ']:
         if text.startswith(prefix):preview=True;text=text[len(prefix):];break
     m=re.fullmatch(r'(?:please )?(?:turn|switch) (?:them|it) (?:back )?(on|off)(?: again)?(?: please)?',text)
@@ -19,6 +20,19 @@ def followup(text):
     m=re.fullmatch(r'(dim|brighten) (?:them|it)',text)
     if m:return m[1]+' __previous_lights__',preview
     return None
+
+
+def additional_room(text, previous_action):
+    """Handle 'and the dining room lights' only after an established on/off action."""
+    text=text.lower().replace('’', "'").strip().rstrip('.?!')
+    text=re.sub(r'^(?:hey[\\s,]+)?jarvis[\\s,:.!?]+', '', text)
+    match=re.fullmatch(r'and (?:the )?(.+?)(?: lights?)?',text)
+    if not match or previous_action not in {'turn_on','turn_off'}:
+        return None
+    target=match[1].strip()
+    if not target or target in {'it','them','that','those'}:
+        return None
+    return 'turn '+previous_action.removeprefix('turn_')+' '+target
 
 
 def followup_steps(hass, text, ids):
